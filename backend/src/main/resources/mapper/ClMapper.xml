@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.cl.mapper.ClMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.cl.ClClose">
+        SELECT L.ID, L.COMP_CD, L.CLOSE_NO, L.CLOSE_YM, L.VD_CD, L.VD_NM,
+               L.TOT_SUPL_AMT, L.TOT_VAT_AMT, L.TOT_AMT, L.ADJ_AMT, L.NET_AMT, L.GR_CNT, L.LOCK_YN, L.STS,
+               C.CD_NM_KO AS STS_NM, L.REG_ID, TO_CHAR(L.REG_DT,'YYYY-MM-DD HH24:MI') AS REG_DT
+          FROM CL_CLOSE L
+          LEFT JOIN CM_CODE C ON C.GRP_CD='CL_STS' AND C.CD=L.STS AND C.DEL_YN='N'
+         WHERE L.DEL_YN = 'N'
+        <if test="keyword != null and keyword != ''">
+           AND (L.CLOSE_NO LIKE '%' || #{keyword} || '%' OR L.VD_NM LIKE '%' || #{keyword} || '%')
+        </if>
+        <if test="sts != null and sts != ''">AND L.STS = #{sts}</if>
+        <if test="closeYm != null and closeYm != ''">AND L.CLOSE_YM = #{closeYm}</if>
+         ORDER BY L.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.cl.ClClose">
+        SELECT L.ID, L.COMP_CD, L.CLOSE_NO, L.CLOSE_YM, L.VD_CD, L.VD_NM,
+               L.TOT_SUPL_AMT, L.TOT_VAT_AMT, L.TOT_AMT, L.ADJ_AMT, L.NET_AMT, L.GR_CNT,
+               L.PAY_TERM_CD, PT.CD_NM_KO AS PAY_TERM_NM, L.PAY_METHOD_CD, PM.CD_NM_KO AS PAY_METHOD_NM,
+               TO_CHAR(L.PAY_DUE_YMD,'YYYY-MM-DD') AS PAY_DUE_YMD, L.LOCK_YN, L.STS,
+               C.CD_NM_KO AS STS_NM, L.REMARK, L.REG_ID, TO_CHAR(L.REG_DT,'YYYY-MM-DD HH24:MI') AS REG_DT
+          FROM CL_CLOSE L
+          LEFT JOIN CM_CODE C ON C.GRP_CD='CL_STS' AND C.CD=L.STS AND C.DEL_YN='N'
+          LEFT JOIN CM_CODE PT ON PT.GRP_CD='PAY_TERM' AND PT.CD=L.PAY_TERM_CD AND PT.DEL_YN='N'
+          LEFT JOIN CM_CODE PM ON PM.GRP_CD='PAY_METHOD' AND PM.CD=L.PAY_METHOD_CD AND PM.DEL_YN='N'
+         WHERE L.ID = #{id} AND L.DEL_YN = 'N'
+    </select>
+
+    <select id="findDetailGrs" resultType="com.purchasesystem.domain.cl.ClCloseGr">
+        SELECT ID, CLOSE_ID, GR_ID, GR_NO, TO_CHAR(GR_YMD,'YYYY-MM-DD') AS GR_YMD, PO_NO,
+               SUPL_AMT, VAT_AMT, AMT
+          FROM CL_CLOSE_GR WHERE CLOSE_ID = #{closeId} ORDER BY GR_ID
+    </select>
+
+    <!-- 마감대상: 입고확정(CFM) & 해당 협력사/마감월 & 아직 활성 마감에 포함 안된 입고
+         공급가/부가세는 입고 품목의 과세구분(TAX_TYP)별로 산출(면세/영세율 = 부가세 0) -->
+    <select id="findEligibleGrs" resultType="com.purchasesystem.domain.cl.ClCloseGr">
+        SELECT G.ID AS GR_ID, G.GR_NO, TO_CHAR(G.GR_YMD,'YYYY-MM-DD') AS GR_YMD, G.PO_NO,
+               G.VD_NM, NVL(T.SUPL,0) AS SUPL_AMT, NVL(T.VAT,0) AS VAT_AMT
+          FROM GR_RECEIPT G
+          LEFT JOIN ( SELECT RECEIPT_ID,
+                             SUM(AMT) AS SUPL,
+                             SUM(CASE WHEN NVL(TAX_TYP,'TAX')='TAX' THEN ROUND(AMT*0.1) ELSE 0 END) AS VAT
+                        FROM GR_RECEIPT_ITEM GROUP BY RECEIPT_ID ) T ON T.RECEIPT_ID = G.ID
+         WHERE G.DEL_YN='N' AND G.STS='CFM'
+           AND G.VD_CD = #{vdCd}
+           AND TO_CHAR(G.GR_YMD,'YYYYMM') = #{closeYm}
+           AND NOT EXISTS (
+                 SELECT 1 FROM CL_CLOSE_GR CG
+                   JOIN CL_CLOSE CC ON CC.ID = CG.CLOSE_ID
+                  WHERE CG.GR_ID = G.ID AND CC.STS != 'CANCEL' AND CC.DEL_YN='N')
+         ORDER BY G.GR_YMD, G.ID
+    </select>
+
+    <insert id="insertClose" parameterType="com.purchasesystem.domain.cl.ClClose"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO CL_CLOSE (COMP_CD, CLOSE_NO, CLOSE_YM, VD_CD, VD_NM, TOT_SUPL_AMT, TOT_VAT_AMT,
+                              TOT_AMT, GR_CNT, PAY_TERM_CD, PAY_METHOD_CD, PAY_DUE_YMD, LOCK_YN, STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{closeNo}, #{closeYm}, #{vdCd}, #{vdNm}, NVL(#{totSuplAmt},0), NVL(#{totVatAmt},0),
+                NVL(#{totAmt},0), NVL(#{grCnt},0), #{payTermCd}, #{payMethodCd}, TO_DATE(#{payDueYmd},'YYYY-MM-DD'),
+                'N', 'TMP', #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <insert id="insertCloseGr" parameterType="com.purchasesystem.domain.cl.ClCloseGr">
+        INSERT INTO CL_CLOSE_GR (CLOSE_ID, GR_ID, GR_NO, GR_YMD, PO_NO, SUPL_AMT, VAT_AMT, AMT, REG_ID)
+        VALUES (#{closeId}, #{grId}, #{grNo}, TO_DATE(#{grYmd},'YYYY-MM-DD'), #{poNo},
+                NVL(#{suplAmt},0), NVL(#{vatAmt},0), NVL(#{amt},0), 'SYSTEM')
+    </insert>
+
+    <update id="updateStatus">
+        UPDATE CL_CLOSE SET STS=#{sts}, LOCK_YN=#{lockYn}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="deleteClose">
+        UPDATE CL_CLOSE SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <delete id="deleteCloseGrs">DELETE FROM CL_CLOSE_GR WHERE CLOSE_ID = #{closeId}</delete>
+
+</mapper>

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.stock.mapper.StockMapper">
+
+    <select id="findStockList" resultType="com.purchasesystem.domain.stock.StStock">
+        SELECT S.ID, S.COMP_CD, S.WH_CD, W.CD_NM_KO AS WH_NM, S.ITEM_CD, S.ITEM_NM, S.LOT_NO,
+               TO_CHAR(S.MFG_YMD,'YYYY-MM-DD') AS MFG_YMD, TO_CHAR(S.EXP_YMD,'YYYY-MM-DD') AS EXP_YMD,
+               S.UNIT_CD, S.QTY, TO_CHAR(S.LAST_IN_YMD,'YYYY-MM-DD') AS LAST_IN_YMD, TO_CHAR(S.LAST_OUT_YMD,'YYYY-MM-DD') AS LAST_OUT_YMD
+          FROM ST_STOCK S
+          LEFT JOIN CM_CODE W ON W.GRP_CD='WH' AND W.CD=S.WH_CD AND W.DEL_YN='N'
+         WHERE 1=1
+        <if test="keyword != null and keyword != ''">AND (S.ITEM_CD LIKE '%'||#{keyword}||'%' OR S.ITEM_NM LIKE '%'||#{keyword}||'%' OR S.LOT_NO LIKE '%'||#{keyword}||'%')</if>
+        <if test="whCd != null and whCd != ''">AND S.WH_CD=#{whCd}</if>
+        <if test="zeroYn != 'Y'">AND S.QTY &gt; 0</if>
+         ORDER BY S.ITEM_CD, S.WH_CD, S.EXP_YMD NULLS LAST, S.LOT_NO
+    </select>
+
+    <select id="findStockRow" resultType="com.purchasesystem.domain.stock.StStock">
+        SELECT ID, COMP_CD, WH_CD, ITEM_CD, ITEM_NM, LOT_NO, QTY FROM ST_STOCK
+         WHERE COMP_CD=#{compCd} AND WH_CD=#{whCd} AND ITEM_CD=#{itemCd} AND LOT_NO=#{lotNo}
+    </select>
+
+    <select id="findStockByItemWh" resultType="com.purchasesystem.domain.stock.StStock">
+        SELECT ID, WH_CD, ITEM_CD, ITEM_NM, LOT_NO, TO_CHAR(EXP_YMD,'YYYY-MM-DD') AS EXP_YMD, UNIT_CD, QTY
+          FROM ST_STOCK
+         WHERE ITEM_CD=#{itemCd} AND QTY &gt; 0
+        <if test="whCd != null and whCd != ''">AND WH_CD=#{whCd}</if>
+         ORDER BY EXP_YMD NULLS LAST, LOT_NO
+    </select>
+
+    <insert id="insertStock" parameterType="com.purchasesystem.domain.stock.StStock"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO ST_STOCK (COMP_CD, WH_CD, ITEM_CD, ITEM_NM, LOT_NO, MFG_YMD, EXP_YMD, UNIT_CD, QTY, LAST_IN_YMD, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{whCd}, #{itemCd}, #{itemNm}, NVL(#{lotNo},'*'),
+                TO_DATE(#{mfgYmd},'YYYY-MM-DD'), TO_DATE(#{expYmd},'YYYY-MM-DD'), #{unitCd}, NVL(#{qty},0),
+                TO_DATE(#{lastInYmd},'YYYY-MM-DD'), #{compCd}, #{compCd})
+    </insert>
+
+    <update id="updateStockQty">
+        UPDATE ST_STOCK SET QTY=#{qty}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP
+        <if test="inYmd != null">, LAST_IN_YMD=TO_DATE(#{inYmd},'YYYY-MM-DD')</if>
+        <if test="outYmd != null">, LAST_OUT_YMD=TO_DATE(#{outYmd},'YYYY-MM-DD')</if>
+         WHERE ID=#{id}
+    </update>
+
+    <select id="findLedger" resultType="com.purchasesystem.domain.stock.StLedger">
+        SELECT L.ID, L.TRANS_TYP, T.CD_NM_KO AS TRANS_TYP_NM, L.WH_CD, W.CD_NM_KO AS WH_NM,
+               L.ITEM_CD, L.ITEM_NM, L.LOT_NO, L.IN_QTY, L.OUT_QTY, L.BAL_QTY, L.UNIT_CD,
+               L.SRC_TYP, L.SRC_NO, TO_CHAR(L.TRANS_YMD,'YYYY-MM-DD') AS TRANS_YMD, L.REMARK
+          FROM ST_LEDGER L
+          LEFT JOIN CM_CODE T ON T.GRP_CD='ST_TRANS_TYP' AND T.CD=L.TRANS_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE W ON W.GRP_CD='WH' AND W.CD=L.WH_CD AND W.DEL_YN='N'
+         WHERE 1=1
+        <if test="keyword != null and keyword != ''">AND (L.ITEM_CD LIKE '%'||#{keyword}||'%' OR L.ITEM_NM LIKE '%'||#{keyword}||'%' OR L.SRC_NO LIKE '%'||#{keyword}||'%')</if>
+        <if test="itemCd != null and itemCd != ''">AND L.ITEM_CD=#{itemCd}</if>
+        <if test="whCd != null and whCd != ''">AND L.WH_CD=#{whCd}</if>
+        <if test="transTyp != null and transTyp != ''">AND L.TRANS_TYP=#{transTyp}</if>
+         ORDER BY L.ID DESC
+    </select>
+
+    <insert id="insertLedger" parameterType="com.purchasesystem.domain.stock.StLedger">
+        INSERT INTO ST_LEDGER (COMP_CD, TRANS_TYP, WH_CD, ITEM_CD, ITEM_NM, LOT_NO, IN_QTY, OUT_QTY, BAL_QTY, UNIT_CD,
+               SRC_TYP, SRC_ID, SRC_NO, TRANS_YMD, REMARK, REG_ID)
+        VALUES (#{compCd}, #{transTyp}, #{whCd}, #{itemCd}, #{itemNm}, #{lotNo}, NVL(#{inQty},0), NVL(#{outQty},0), NVL(#{balQty},0), #{unitCd},
+               #{srcTyp}, #{srcId}, #{srcNo}, TO_DATE(#{transYmd},'YYYY-MM-DD'), #{remark}, #{regId})
+    </insert>
+
+</mapper>

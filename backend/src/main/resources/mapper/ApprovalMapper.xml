@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.approval.mapper.ApprovalMapper">
+
+    <insert id="insertApproval" parameterType="com.purchasesystem.domain.approval.AppApproval"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO AP_APPROVAL (COMP_CD, APRV_NO, DOC_TYP, DOC_ID, DOC_NO, APRV_TITLE,
+                                 DRAFT_USR_ID, DRAFT_USR_NM, CUR_STEP_NO, APRV_STS, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{aprvNo}, #{docTyp}, #{docId}, #{docNo}, #{aprvTitle},
+                #{draftUsrId}, #{draftUsrNm}, 1, 'ING', #{draftUsrId}, #{draftUsrId})
+    </insert>
+
+    <insert id="insertLine" parameterType="com.purchasesystem.domain.approval.AppLine">
+        INSERT INTO AP_APPROVAL_LINE (APRV_ID, STEP_NO, APRV_USR_ID, APRV_USR_NM, LINE_TYP, FINAL_YN, LINE_STS, REG_ID)
+        VALUES (#{aprvId}, #{stepNo}, #{aprvUsrId}, #{aprvUsrNm}, NVL(#{lineTyp},'APRV'), NVL(#{finalYn},'N'), #{lineSts}, 'SYSTEM')
+    </insert>
+
+    <select id="findById" resultType="com.purchasesystem.domain.approval.AppApproval">
+        SELECT A.ID, A.COMP_CD, A.APRV_NO, A.DOC_TYP, A.DOC_ID, A.DOC_NO, A.APRV_TITLE,
+               A.DRAFT_USR_ID, A.DRAFT_USR_NM, TO_CHAR(A.DRAFT_DT,'YYYY-MM-DD HH24:MI') AS DRAFT_DT,
+               A.CUR_STEP_NO, A.APRV_STS, C.CD_NM_KO AS APRV_STS_NM,
+               TO_CHAR(A.FINAL_APRV_DT,'YYYY-MM-DD HH24:MI') AS FINAL_APRV_DT
+          FROM AP_APPROVAL A
+          LEFT JOIN CM_CODE C ON C.GRP_CD='APRV_STS' AND C.CD=A.APRV_STS AND C.DEL_YN='N'
+         WHERE A.ID=#{id} AND A.DEL_YN='N'
+    </select>
+
+    <select id="findActiveByDoc" resultType="com.purchasesystem.domain.approval.AppApproval">
+        SELECT * FROM (
+          SELECT A.ID, A.APRV_NO, A.DOC_TYP, A.DOC_ID, A.DOC_NO, A.APRV_TITLE, A.DRAFT_USR_NM,
+                 TO_CHAR(A.DRAFT_DT,'YYYY-MM-DD HH24:MI') AS DRAFT_DT, A.CUR_STEP_NO,
+                 A.APRV_STS, C.CD_NM_KO AS APRV_STS_NM
+            FROM AP_APPROVAL A
+            LEFT JOIN CM_CODE C ON C.GRP_CD='APRV_STS' AND C.CD=A.APRV_STS AND C.DEL_YN='N'
+           WHERE A.DOC_TYP=#{docTyp} AND A.DOC_ID=#{docId} AND A.DEL_YN='N'
+           ORDER BY A.ID DESC
+        ) WHERE ROWNUM = 1
+    </select>
+
+    <select id="findLines" resultType="com.purchasesystem.domain.approval.AppLine">
+        SELECT L.ID, L.APRV_ID, L.STEP_NO, L.APRV_USR_ID, L.APRV_USR_NM,
+               L.LINE_TYP, T.CD_NM_KO AS LINE_TYP_NM, L.FINAL_YN, L.ACT_AS_USR_ID, L.LINE_STS,
+               C.CD_NM_KO AS LINE_STS_NM, TO_CHAR(L.APRV_DT,'YYYY-MM-DD HH24:MI') AS APRV_DT, L.OPINION
+          FROM AP_APPROVAL_LINE L
+          LEFT JOIN CM_CODE C ON C.GRP_CD='LINE_STS' AND C.CD=L.LINE_STS AND C.DEL_YN='N'
+          LEFT JOIN CM_CODE T ON T.GRP_CD='AP_LINE_TYP' AND T.CD=L.LINE_TYP AND T.DEL_YN='N'
+         WHERE L.APRV_ID=#{aprvId} ORDER BY L.STEP_NO
+    </select>
+
+    <update id="updateApprovalStatus">
+        UPDATE AP_APPROVAL
+           SET APRV_STS=#{aprvSts}, CUR_STEP_NO=#{curStepNo},
+               FINAL_APRV_DT = CASE WHEN #{aprvSts} = 'DONE' THEN SYSTIMESTAMP ELSE FINAL_APRV_DT END,
+               MOD_DT=SYSTIMESTAMP
+         WHERE ID=#{id}
+    </update>
+    <update id="updateLineStatus">
+        UPDATE AP_APPROVAL_LINE SET LINE_STS=#{lineSts}, OPINION=#{opinion}, APRV_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="updateLineStatusAs">
+        UPDATE AP_APPROVAL_LINE SET LINE_STS=#{lineSts}, OPINION=#{opinion}, ACT_AS_USR_ID=#{actAsUsrId}, APRV_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="setLineIng">
+        UPDATE AP_APPROVAL_LINE SET LINE_STS='ING' WHERE APRV_ID=#{aprvId} AND STEP_NO=#{stepNo}
+    </update>
+    <update id="skipRemaining">
+        UPDATE AP_APPROVAL_LINE SET LINE_STS='SKIP'
+         WHERE APRV_ID=#{aprvId} AND STEP_NO &gt; #{afterStepNo}
+           AND LINE_TYP IN ('APRV','AGRE') AND LINE_STS IN ('WAIT','ING')
+    </update>
+
+    <select id="findInbox" resultType="com.purchasesystem.domain.approval.AppLine">
+        SELECT L.ID, L.APRV_ID, L.STEP_NO, L.APRV_USR_ID, L.APRV_USR_NM, L.LINE_TYP, T.CD_NM_KO AS LINE_TYP_NM,
+               L.FINAL_YN, L.LINE_STS, LC.CD_NM_KO AS LINE_STS_NM,
+               TO_CHAR(L.APRV_DT,'YYYY-MM-DD HH24:MI') AS APRV_DT, L.OPINION,
+               A.APRV_NO, A.DOC_TYP, A.DOC_ID, A.DOC_NO, A.APRV_TITLE, A.DRAFT_USR_NM
+          FROM AP_APPROVAL_LINE L
+          JOIN AP_APPROVAL A ON A.ID = L.APRV_ID AND A.DEL_YN='N'
+          LEFT JOIN CM_CODE LC ON LC.GRP_CD='LINE_STS' AND LC.CD=L.LINE_STS AND LC.DEL_YN='N'
+          LEFT JOIN CM_CODE T ON T.GRP_CD='AP_LINE_TYP' AND T.CD=L.LINE_TYP AND T.DEL_YN='N'
+         WHERE L.APRV_USR_ID IN
+          <foreach collection="delegators" item="d" open="(" separator="," close=")">#{d}</foreach>
+        <choose>
+          <when test="done"> AND L.LINE_STS IN ('APPROVE','AGREE','FINAL','REJECT') </when>
+          <otherwise> AND L.LINE_STS='ING' AND A.APRV_STS='ING' </otherwise>
+        </choose>
+         ORDER BY L.APRV_ID DESC
+    </select>
+
+    <select id="findDrafts" resultType="com.purchasesystem.domain.approval.AppApproval">
+        SELECT A.ID, A.APRV_NO, A.DOC_TYP, A.DOC_ID, A.DOC_NO, A.APRV_TITLE, A.CUR_STEP_NO,
+               A.APRV_STS, C.CD_NM_KO AS APRV_STS_NM, TO_CHAR(A.DRAFT_DT,'YYYY-MM-DD HH24:MI') AS DRAFT_DT
+          FROM AP_APPROVAL A
+          LEFT JOIN CM_CODE C ON C.GRP_CD='APRV_STS' AND C.CD=A.APRV_STS AND C.DEL_YN='N'
+         WHERE A.DRAFT_USR_ID=#{usrId} AND A.DEL_YN='N' ORDER BY A.ID DESC
+    </select>
+
+    <select id="findLine" resultType="com.purchasesystem.domain.approval.AppLine">
+        SELECT ID, APRV_ID, STEP_NO, APRV_USR_ID, APRV_USR_NM, LINE_TYP, FINAL_YN, ACT_AS_USR_ID, LINE_STS, OPINION
+          FROM AP_APPROVAL_LINE WHERE ID=#{id}
+    </select>
+
+</mapper>

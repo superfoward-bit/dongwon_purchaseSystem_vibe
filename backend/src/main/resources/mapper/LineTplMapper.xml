@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.approval.mapper.LineTplMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.approval.AppLineTpl">
+        SELECT ID, COMP_CD, DOC_TYP, TPL_NM, AMT_FROM, AMT_TO, SORT_NO, USE_YN, REG_ID
+          FROM AP_LINE_TPL WHERE DEL_YN='N'
+        <if test="docTyp != null and docTyp != ''">AND DOC_TYP=#{docTyp}</if>
+         ORDER BY DOC_TYP, SORT_NO, AMT_FROM
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.approval.AppLineTpl">
+        SELECT ID, COMP_CD, DOC_TYP, TPL_NM, AMT_FROM, AMT_TO, SORT_NO, USE_YN, REG_ID
+          FROM AP_LINE_TPL WHERE ID=#{id} AND DEL_YN='N'
+    </select>
+
+    <select id="findSteps" resultType="com.purchasesystem.domain.approval.AppLineTplStep">
+        SELECT S.ID, S.TPL_ID, S.STEP_NO, S.LINE_TYP, T.CD_NM_KO AS LINE_TYP_NM,
+               S.APRV_USR_ID, S.APRV_USR_NM, S.FINAL_YN
+          FROM AP_LINE_TPL_STEP S
+          LEFT JOIN CM_CODE T ON T.GRP_CD='AP_LINE_TYP' AND T.CD=S.LINE_TYP AND T.DEL_YN='N'
+         WHERE S.TPL_ID=#{tplId} ORDER BY S.STEP_NO
+    </select>
+
+    <select id="findMatch" resultType="com.purchasesystem.domain.approval.AppLineTpl">
+        SELECT * FROM (
+          SELECT ID, COMP_CD, DOC_TYP, TPL_NM, AMT_FROM, AMT_TO, SORT_NO, USE_YN
+            FROM AP_LINE_TPL
+           WHERE DEL_YN='N' AND USE_YN='Y' AND COMP_CD=#{compCd} AND DOC_TYP=#{docTyp}
+             AND #{amount} BETWEEN AMT_FROM AND AMT_TO
+           ORDER BY SORT_NO, AMT_FROM
+        ) WHERE ROWNUM = 1
+    </select>
+
+    <insert id="insertTpl" parameterType="com.purchasesystem.domain.approval.AppLineTpl"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO AP_LINE_TPL (COMP_CD, DOC_TYP, TPL_NM, AMT_FROM, AMT_TO, SORT_NO, USE_YN, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{docTyp}, #{tplNm}, NVL(#{amtFrom},0), NVL(#{amtTo},999999999999), NVL(#{sortNo},1), NVL(#{useYn},'Y'), #{regId}, #{regId})
+    </insert>
+
+    <update id="updateTpl" parameterType="com.purchasesystem.domain.approval.AppLineTpl">
+        UPDATE AP_LINE_TPL SET DOC_TYP=#{docTyp}, TPL_NM=#{tplNm}, AMT_FROM=NVL(#{amtFrom},0),
+               AMT_TO=NVL(#{amtTo},999999999999), SORT_NO=NVL(#{sortNo},1), USE_YN=#{useYn},
+               MOD_ID=#{regId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="deleteTpl">UPDATE AP_LINE_TPL SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+
+    <insert id="insertStep" parameterType="com.purchasesystem.domain.approval.AppLineTplStep">
+        INSERT INTO AP_LINE_TPL_STEP (TPL_ID, STEP_NO, LINE_TYP, APRV_USR_ID, APRV_USR_NM, FINAL_YN, REG_ID)
+        VALUES (#{tplId}, #{stepNo}, NVL(#{lineTyp},'APRV'), #{aprvUsrId}, #{aprvUsrNm}, NVL(#{finalYn},'N'), 'SYSTEM')
+    </insert>
+    <delete id="deleteSteps">DELETE FROM AP_LINE_TPL_STEP WHERE TPL_ID=#{tplId}</delete>
+
+</mapper>

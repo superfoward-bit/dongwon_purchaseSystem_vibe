@@ -1,0 +1,38 @@
+-- =============================================================
+-- 구매시스템 DDL - 45. 발주 고도화
+--   발주유형/구매유형, 계약이행·하자보증금, 선금/기성/잔금 분할결제(PO_PAY_PLAN)
+-- =============================================================
+
+ALTER TABLE PO_ORDER ADD (
+  PO_TYP          VARCHAR2(18 CHAR) DEFAULT 'STD',    -- STD표준/CONST공사용역/PRICE단가계약/EMERG긴급
+  PURC_TYP        VARCHAR2(18 CHAR) DEFAULT 'MT',     -- MT자재/CT공사·용역
+  PERFOR_BOND_YN  CHAR(1 CHAR) DEFAULT 'N',           -- 계약이행보증
+  PERFOR_BOND_RATE NUMBER(6,2) DEFAULT 0,
+  MAINT_BOND_YN   CHAR(1 CHAR) DEFAULT 'N',           -- 하자유지보증
+  MAINT_BOND_RATE NUMBER(6,2) DEFAULT 0,
+  PAY_PLAN_YN     CHAR(1 CHAR) DEFAULT 'N'            -- 선금/기성/잔금 분할결제 사용
+);
+COMMENT ON COLUMN PO_ORDER.PO_TYP IS '발주유형(STD/CONST/PRICE/EMERG)';
+COMMENT ON COLUMN PO_ORDER.PURC_TYP IS '구매유형(MT자재/CT공사용역)';
+COMMENT ON COLUMN PO_ORDER.PERFOR_BOND_YN IS '계약이행보증 여부';
+COMMENT ON COLUMN PO_ORDER.MAINT_BOND_YN IS '하자유지보증 여부';
+COMMENT ON COLUMN PO_ORDER.PAY_PLAN_YN IS '분할결제(선금/기성/잔금) 사용';
+
+CREATE TABLE PO_PAY_PLAN (
+  ID        NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  ORDER_ID  NUMBER NOT NULL,
+  LINE_NO   NUMBER NOT NULL,
+  PAY_TYP   VARCHAR2(18 CHAR),          -- PRE선금/PROG기성/BAL잔금
+  PAY_NM    VARCHAR2(100 CHAR),
+  RATE      NUMBER(6,2) DEFAULT 0,      -- 비율(%)
+  AMT       NUMBER(20,5) DEFAULT 0,     -- 금액(총액×비율)
+  PLAN_YMD  DATE,                       -- 지급예정일
+  PAID_YN   CHAR(1 CHAR) DEFAULT 'N',   -- 지급여부
+  REMARK    VARCHAR2(500 CHAR),
+  REG_ID    VARCHAR2(18 CHAR),
+  REG_DT    TIMESTAMP(0) WITH LOCAL TIME ZONE DEFAULT SYSTIMESTAMP,
+  CONSTRAINT UX_PO_PAY_PLAN_1 UNIQUE (ORDER_ID, LINE_NO),
+  CONSTRAINT FK_PO_PAY_PLAN_1 FOREIGN KEY (ORDER_ID) REFERENCES PO_ORDER (ID)
+);
+COMMENT ON TABLE PO_PAY_PLAN IS '발주 분할결제(선금/기성/잔금) 계획';
+COMMENT ON COLUMN PO_PAY_PLAN.PAY_TYP IS '결제유형(PRE선금/PROG기성/BAL잔금)';

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.bc.mapper.BcMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.bc.BcContract">
+        SELECT C.ID, C.BC_NO, C.BC_REV, C.BC_TITLE, C.BC_TYP, BT.CD_NM_KO AS BC_TYP_NM, C.VD_CD, C.VD_NM,
+               TO_CHAR(C.VALID_SD,'YYYY-MM-DD') AS VALID_SD, TO_CHAR(C.VALID_ED,'YYYY-MM-DD') AS VALID_ED,
+               C.STS, S.CD_NM_KO AS STS_NM, C.CHRG_USR_NM, C.AUTO_RENEW_YN, C.REG_ID,
+               CASE WHEN C.STS='ACTIVE' AND C.VALID_ED IS NOT NULL
+                    THEN TRUNC(C.VALID_ED) - TRUNC(SYSDATE) END AS DDAY_LEFT
+          FROM BC_CONTRACT C
+          LEFT JOIN CM_CODE BT ON BT.GRP_CD='BC_TYP' AND BT.CD=C.BC_TYP AND BT.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='BC_STS' AND S.CD=C.STS AND S.DEL_YN='N'
+         WHERE C.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">
+           AND (C.BC_NO LIKE '%'||#{keyword}||'%' OR C.BC_TITLE LIKE '%'||#{keyword}||'%' OR C.VD_NM LIKE '%'||#{keyword}||'%')
+        </if>
+        <if test="sts != null and sts != ''">AND C.STS=#{sts}</if>
+        <if test="vdCd != null and vdCd != ''">AND C.VD_CD=#{vdCd}</if>
+         ORDER BY C.ID DESC
+    </select>
+
+    <select id="findExpiring" resultType="com.purchasesystem.domain.bc.BcContract">
+        SELECT C.ID, C.BC_NO, C.BC_REV, C.BC_TITLE, C.VD_CD, C.VD_NM, C.CHRG_USR_NM, C.AUTO_RENEW_YN,
+               TO_CHAR(C.VALID_SD,'YYYY-MM-DD') AS VALID_SD, TO_CHAR(C.VALID_ED,'YYYY-MM-DD') AS VALID_ED,
+               C.STS, S.CD_NM_KO AS STS_NM, (TRUNC(C.VALID_ED) - TRUNC(SYSDATE)) AS DDAY_LEFT
+          FROM BC_CONTRACT C
+          LEFT JOIN CM_CODE S ON S.GRP_CD='BC_STS' AND S.CD=C.STS AND S.DEL_YN='N'
+         WHERE C.DEL_YN='N' AND C.STS='ACTIVE' AND C.VALID_ED IS NOT NULL
+           AND C.VALID_ED &lt;= TRUNC(SYSDATE) + #{days}
+         ORDER BY C.VALID_ED
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.bc.BcContract">
+        SELECT C.ID, C.COMP_CD, C.BC_NO, C.BC_REV, C.BC_TITLE, C.BC_TYP, BT.CD_NM_KO AS BC_TYP_NM,
+               C.VD_CD, C.VD_NM, C.PURC_GRP_CD, C.CHRG_USR_ID, C.CHRG_USR_NM,
+               TO_CHAR(C.VALID_SD,'YYYY-MM-DD') AS VALID_SD, TO_CHAR(C.VALID_ED,'YYYY-MM-DD') AS VALID_ED,
+               C.PAY_COND, C.DELY_COND, C.CURR_CD, C.AUTO_RENEW_YN, C.NOTICE_DAYS, C.PREV_ID,
+               C.STS, S.CD_NM_KO AS STS_NM, C.REMARK, C.REG_ID
+          FROM BC_CONTRACT C
+          LEFT JOIN CM_CODE BT ON BT.GRP_CD='BC_TYP' AND BT.CD=C.BC_TYP AND BT.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='BC_STS' AND S.CD=C.STS AND S.DEL_YN='N'
+         WHERE C.ID=#{id} AND C.DEL_YN='N'
+    </select>
+
+    <select id="findTerms" resultType="com.purchasesystem.domain.bc.BcTerm">
+        SELECT ID, CONTRACT_ID, LINE_NO, TERM_NM, TERM_CONTENT, REMARK
+          FROM BC_CONTRACT_TERM WHERE CONTRACT_ID=#{contractId} ORDER BY LINE_NO
+    </select>
+
+    <insert id="insertContract" parameterType="com.purchasesystem.domain.bc.BcContract"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO BC_CONTRACT (COMP_CD, BC_NO, BC_REV, BC_TITLE, BC_TYP, VD_CD, VD_NM, PURC_GRP_CD,
+               CHRG_USR_ID, CHRG_USR_NM, VALID_SD, VALID_ED, PAY_COND, DELY_COND, CURR_CD,
+               AUTO_RENEW_YN, NOTICE_DAYS, PREV_ID, STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{bcNo}, NVL(#{bcRev},0), #{bcTitle}, NVL(#{bcTyp},'BASIC'), #{vdCd}, #{vdNm}, #{purcGrpCd},
+               #{chrgUsrId}, #{chrgUsrNm}, TO_DATE(#{validSd},'YYYY-MM-DD'), TO_DATE(#{validEd},'YYYY-MM-DD'),
+               #{payCond}, #{delyCond}, NVL(#{currCd},'KRW'), NVL(#{autoRenewYn},'N'), NVL(#{noticeDays},30),
+               #{prevId}, NVL(#{sts},'TMP'), #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <update id="updateContract" parameterType="com.purchasesystem.domain.bc.BcContract">
+        UPDATE BC_CONTRACT SET BC_TITLE=#{bcTitle}, BC_TYP=#{bcTyp}, VD_CD=#{vdCd}, VD_NM=#{vdNm}, PURC_GRP_CD=#{purcGrpCd},
+               CHRG_USR_ID=#{chrgUsrId}, CHRG_USR_NM=#{chrgUsrNm},
+               VALID_SD=TO_DATE(#{validSd},'YYYY-MM-DD'), VALID_ED=TO_DATE(#{validEd},'YYYY-MM-DD'),
+               PAY_COND=#{payCond}, DELY_COND=#{delyCond}, CURR_CD=#{currCd}, AUTO_RENEW_YN=NVL(#{autoRenewYn},'N'),
+               NOTICE_DAYS=NVL(#{noticeDays},30), REMARK=#{remark}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP
+         WHERE ID=#{id}
+    </update>
+    <update id="updateStatus">UPDATE BC_CONTRACT SET STS=#{sts}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <update id="deleteContract">UPDATE BC_CONTRACT SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+
+    <insert id="insertTerm" parameterType="com.purchasesystem.domain.bc.BcTerm">
+        INSERT INTO BC_CONTRACT_TERM (CONTRACT_ID, LINE_NO, TERM_NM, TERM_CONTENT, REMARK, REG_ID)
+        VALUES (#{contractId}, #{lineNo}, #{termNm}, #{termContent}, #{remark}, 'SYSTEM')
+    </insert>
+    <delete id="deleteTerms">DELETE FROM BC_CONTRACT_TERM WHERE CONTRACT_ID=#{contractId}</delete>
+
+</mapper>

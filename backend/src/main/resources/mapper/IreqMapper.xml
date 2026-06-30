@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.ireq.mapper.IreqMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.ireq.ItItemReq">
+        SELECT R.ID, R.REQ_NO, R.ITEM_NM, R.CATE_CD, R.CATE_NM, R.SPEC, R.UNIT_CD,
+               R.STS, S.CD_NM_KO AS STS_NM, R.CREATED_ITEM_CD, R.REG_ID
+          FROM IT_ITEM_REQ R
+          LEFT JOIN CM_CODE S ON S.GRP_CD='IR_STS' AND S.CD=R.STS AND S.DEL_YN='N'
+         WHERE R.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">
+           AND (R.REQ_NO LIKE '%'||#{keyword}||'%' OR R.ITEM_NM LIKE '%'||#{keyword}||'%')
+        </if>
+        <if test="sts != null and sts != ''">AND R.STS=#{sts}</if>
+         ORDER BY R.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.ireq.ItItemReq">
+        SELECT R.ID, R.COMP_CD, R.REQ_NO, R.ITEM_NM, R.ITEM_NM_EN, R.CATE_CD, R.CATE_NM, R.SPEC, R.UNIT_CD,
+               R.ITEM_TYP, R.TAX_TYP, R.REQ_DESC, R.STS, S.CD_NM_KO AS STS_NM, R.CREATED_ITEM_CD, R.REMARK, R.REG_ID
+          FROM IT_ITEM_REQ R
+          LEFT JOIN CM_CODE S ON S.GRP_CD='IR_STS' AND S.CD=R.STS AND S.DEL_YN='N'
+         WHERE R.ID=#{id} AND R.DEL_YN='N'
+    </select>
+
+    <insert id="insert" parameterType="com.purchasesystem.domain.ireq.ItItemReq"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO IT_ITEM_REQ (COMP_CD, REQ_NO, ITEM_NM, ITEM_NM_EN, CATE_CD, CATE_NM, SPEC, UNIT_CD,
+               ITEM_TYP, TAX_TYP, REQ_DESC, STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{reqNo}, #{itemNm}, #{itemNmEn}, #{cateCd}, #{cateNm}, #{spec}, #{unitCd},
+               #{itemTyp}, NVL(#{taxTyp},'TAX'), #{reqDesc}, NVL(#{sts},'REQ'), #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <update id="update" parameterType="com.purchasesystem.domain.ireq.ItItemReq">
+        UPDATE IT_ITEM_REQ SET ITEM_NM=#{itemNm}, ITEM_NM_EN=#{itemNmEn}, CATE_CD=#{cateCd}, CATE_NM=#{cateNm},
+               SPEC=#{spec}, UNIT_CD=#{unitCd}, ITEM_TYP=#{itemTyp}, TAX_TYP=#{taxTyp}, REQ_DESC=#{reqDesc},
+               REMARK=#{remark}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="updateStatus">
+        UPDATE IT_ITEM_REQ SET STS=#{sts}, CREATED_ITEM_CD=NVL(#{createdItemCd}, CREATED_ITEM_CD),
+               MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="delete">UPDATE IT_ITEM_REQ SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+
+    <select id="findReqAttrs" resultType="com.purchasesystem.domain.item.ItCateAttr">
+        SELECT ATTR_NM, ATTR_VAL FROM IT_ITEM_REQ_ATTR WHERE REQ_ID=#{reqId} ORDER BY ID
+    </select>
+    <insert id="insertReqAttr">
+        INSERT INTO IT_ITEM_REQ_ATTR (REQ_ID, ATTR_NM, ATTR_VAL) VALUES (#{reqId}, #{attrNm}, #{attrVal})
+    </insert>
+    <delete id="deleteReqAttrs">DELETE FROM IT_ITEM_REQ_ATTR WHERE REQ_ID=#{reqId}</delete>
+
+</mapper>

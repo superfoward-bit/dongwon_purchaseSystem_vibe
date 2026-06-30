@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.eval.mapper.EvalMapper">
+
+    <!-- ===== 평가시트 ===== -->
+    <select id="findSheets" resultType="com.purchasesystem.domain.eval.VdEvalSheet">
+        SELECT ID, SHEET_CD, SHEET_NM, EVAL_TYP, DESCRIPTION, USE_CATE_YN, USE_YN FROM VD_EVAL_SHEET
+         WHERE DEL_YN='N' ORDER BY SHEET_CD
+    </select>
+    <select id="findSheetByCd" resultType="com.purchasesystem.domain.eval.VdEvalSheet">
+        SELECT ID, SHEET_CD, SHEET_NM, EVAL_TYP, DESCRIPTION, USE_CATE_YN, USE_YN FROM VD_EVAL_SHEET
+         WHERE SHEET_CD=#{sheetCd} AND DEL_YN='N'
+    </select>
+    <select id="findSheetItems" resultType="com.purchasesystem.domain.eval.VdEvalSheetItem">
+        SELECT I.ID, I.SHEET_CD, I.ITEM_SEQ, I.EVAL_ITEM_NM, I.EVAL_CLS, I.WEIGHT, I.CATE_SEQ, CT.CATE_NM
+          FROM VD_EVAL_SHEET_ITEM I
+          LEFT JOIN VD_EVAL_SHEET_CATE CT ON CT.SHEET_CD=I.SHEET_CD AND CT.CATE_SEQ=I.CATE_SEQ
+         WHERE I.SHEET_CD=#{sheetCd} ORDER BY I.ITEM_SEQ
+    </select>
+    <select id="countSheet" resultType="int">SELECT COUNT(*) FROM VD_EVAL_SHEET WHERE SHEET_CD=#{sheetCd} AND DEL_YN='N'</select>
+    <insert id="insertSheet" parameterType="com.purchasesystem.domain.eval.VdEvalSheet">
+        INSERT INTO VD_EVAL_SHEET (SHEET_CD, SHEET_NM, EVAL_TYP, DESCRIPTION, USE_CATE_YN, USE_YN, REG_ID, MOD_ID)
+        VALUES (#{sheetCd}, #{sheetNm}, NVL(#{evalTyp},'REGULAR'), #{description}, NVL(#{useCateYn},'N'), NVL(#{useYn},'Y'), #{regId}, #{regId})
+    </insert>
+    <update id="updateSheet" parameterType="com.purchasesystem.domain.eval.VdEvalSheet">
+        UPDATE VD_EVAL_SHEET SET SHEET_NM=#{sheetNm}, EVAL_TYP=#{evalTyp}, DESCRIPTION=#{description},
+               USE_CATE_YN=NVL(#{useCateYn},'N'), USE_YN=#{useYn}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="deleteSheet">UPDATE VD_EVAL_SHEET SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <delete id="deleteSheetItems">DELETE FROM VD_EVAL_SHEET_ITEM WHERE SHEET_CD=#{sheetCd}</delete>
+    <insert id="insertSheetItem" parameterType="com.purchasesystem.domain.eval.VdEvalSheetItem">
+        INSERT INTO VD_EVAL_SHEET_ITEM (SHEET_CD, ITEM_SEQ, EVAL_ITEM_NM, EVAL_CLS, WEIGHT, CATE_SEQ, REG_ID)
+        VALUES (#{sheetCd}, #{itemSeq}, #{evalItemNm}, NVL(#{evalCls},'QUANT'), NVL(#{weight},0), #{cateSeq}, 'SYSTEM')
+    </insert>
+
+    <!-- 카테고리(2단계 가중) -->
+    <select id="findSheetCates" resultType="com.purchasesystem.domain.eval.VdEvalCate">
+        SELECT ID, SHEET_CD, CATE_SEQ, CATE_NM, WEIGHT FROM VD_EVAL_SHEET_CATE
+         WHERE SHEET_CD=#{sheetCd} ORDER BY CATE_SEQ
+    </select>
+    <insert id="insertSheetCate" parameterType="com.purchasesystem.domain.eval.VdEvalCate">
+        INSERT INTO VD_EVAL_SHEET_CATE (SHEET_CD, CATE_SEQ, CATE_NM, WEIGHT, REG_ID)
+        VALUES (#{sheetCd}, #{cateSeq}, #{cateNm}, NVL(#{weight},0), 'SYSTEM')
+    </insert>
+    <delete id="deleteSheetCates">DELETE FROM VD_EVAL_SHEET_CATE WHERE SHEET_CD=#{sheetCd}</delete>
+
+    <!-- ===== 등급 ===== -->
+    <select id="findGrades" resultType="com.purchasesystem.domain.eval.VdEvalGrade">
+        SELECT ID, GRADE_CD, GRADE_NM, MIN_SCORE, MAX_SCORE, ACTION_DESC, SORT_NO, SEG_CD FROM VD_EVAL_GRADE
+         WHERE DEL_YN='N' ORDER BY SEG_CD NULLS FIRST, SORT_NO
+    </select>
+    <select id="findGradeBySegScore" resultType="com.purchasesystem.domain.eval.VdEvalGrade">
+        SELECT * FROM (
+          SELECT ID, GRADE_CD, GRADE_NM, MIN_SCORE, MAX_SCORE, ACTION_DESC, SORT_NO, SEG_CD FROM VD_EVAL_GRADE
+           WHERE DEL_YN='N' AND #{score} BETWEEN MIN_SCORE AND MAX_SCORE
+             AND (SEG_CD = #{segCd} OR SEG_CD IS NULL)
+           ORDER BY CASE WHEN SEG_CD IS NULL THEN 1 ELSE 0 END, SORT_NO
+        ) WHERE ROWNUM = 1
+    </select>
+
+    <select id="findVendorSeg" resultType="string">
+        SELECT SEG_CD FROM VD_VENDOR WHERE VD_CD=#{vdCd} AND DEL_YN='N' AND ROWNUM=1
+    </select>
+    <select id="findVendorSegNm" resultType="string">
+        SELECT SEG_NM FROM VD_VENDOR WHERE VD_CD=#{vdCd} AND DEL_YN='N' AND ROWNUM=1
+    </select>
+
+    <!-- ===== 평가 실행 ===== -->
+    <select id="findEvalList" resultType="com.purchasesystem.domain.eval.VdEval">
+        SELECT E.ID, E.EVAL_NO, E.EVAL_TYP, T.CD_NM_KO AS EVAL_TYP_NM, E.SHEET_NM, E.VD_CD, E.VD_NM, E.SEG_NM,
+               E.EVAL_PERIOD, E.TOT_SCORE, E.GRADE_CD, E.GRADE_NM, E.STS, C.CD_NM_KO AS STS_NM,
+               E.REG_ID, TO_CHAR(E.REG_DT,'YYYY-MM-DD HH24:MI') AS REG_DT
+          FROM VD_EVAL E
+          LEFT JOIN CM_CODE C ON C.GRP_CD='EVAL_STS' AND C.CD=E.STS AND C.DEL_YN='N'
+          LEFT JOIN CM_CODE T ON T.GRP_CD='EVAL_TYP' AND T.CD=E.EVAL_TYP AND T.DEL_YN='N'
+         WHERE E.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">
+           AND (E.EVAL_NO LIKE '%'||#{keyword}||'%' OR E.VD_NM LIKE '%'||#{keyword}||'%')
+        </if>
+        <if test="sts != null and sts != ''">AND E.STS=#{sts}</if>
+         ORDER BY E.ID DESC
+    </select>
+    <select id="findEvalById" resultType="com.purchasesystem.domain.eval.VdEval">
+        SELECT E.ID, E.COMP_CD, E.EVAL_NO, E.EVAL_TYP, T.CD_NM_KO AS EVAL_TYP_NM, E.SHEET_CD, E.SHEET_NM,
+               E.VD_CD, E.VD_NM, E.SEG_CD, E.SEG_NM, E.EVAL_PERIOD, E.EVALUATOR_ID, E.TOT_SCORE, E.GRADE_CD, E.GRADE_NM,
+               E.STS, C.CD_NM_KO AS STS_NM, E.REMARK, E.REG_ID, NVL(S.USE_CATE_YN,'N') AS USE_CATE_YN
+          FROM VD_EVAL E
+          LEFT JOIN CM_CODE C ON C.GRP_CD='EVAL_STS' AND C.CD=E.STS AND C.DEL_YN='N'
+          LEFT JOIN CM_CODE T ON T.GRP_CD='EVAL_TYP' AND T.CD=E.EVAL_TYP AND T.DEL_YN='N'
+          LEFT JOIN VD_EVAL_SHEET S ON S.SHEET_CD=E.SHEET_CD AND S.DEL_YN='N'
+         WHERE E.ID=#{id} AND E.DEL_YN='N'
+    </select>
+    <select id="findResults" resultType="com.purchasesystem.domain.eval.VdEvalResult">
+        SELECT ID, EVAL_ID, SHEET_ITEM_SEQ, EVAL_ITEM_NM, CATE_SEQ, CATE_NM, WEIGHT, SCORE, WEIGHTED_SCORE, OPINION
+          FROM VD_EVAL_RESULT WHERE EVAL_ID=#{evalId} ORDER BY SHEET_ITEM_SEQ
+    </select>
+    <insert id="insertEval" parameterType="com.purchasesystem.domain.eval.VdEval"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO VD_EVAL (COMP_CD, EVAL_NO, EVAL_TYP, SHEET_CD, SHEET_NM, VD_CD, VD_NM, SEG_CD, SEG_NM,
+                             EVAL_PERIOD, EVALUATOR_ID, STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{evalNo}, NVL(#{evalTyp},'REGULAR'), #{sheetCd}, #{sheetNm}, #{vdCd}, #{vdNm}, #{segCd}, #{segNm},
+                #{evalPeriod}, #{evaluatorId}, 'ING', #{remark}, #{regId}, #{regId})
+    </insert>
+    <update id="updateEvalScore">
+        UPDATE VD_EVAL SET TOT_SCORE=#{totScore}, GRADE_CD=#{gradeCd}, GRADE_NM=#{gradeNm}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="updateStatus">UPDATE VD_EVAL SET STS=#{sts}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <update id="deleteEval">UPDATE VD_EVAL SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <insert id="insertResult" parameterType="com.purchasesystem.domain.eval.VdEvalResult">
+        INSERT INTO VD_EVAL_RESULT (EVAL_ID, SHEET_ITEM_SEQ, EVAL_ITEM_NM, CATE_SEQ, CATE_NM, WEIGHT, SCORE, WEIGHTED_SCORE, OPINION, REG_ID)
+        VALUES (#{evalId}, #{sheetItemSeq}, #{evalItemNm}, #{cateSeq}, #{cateNm}, NVL(#{weight},0), NVL(#{score},0), NVL(#{weightedScore},0), #{opinion}, 'SYSTEM')
+    </insert>
+    <update id="updateResult">
+        UPDATE VD_EVAL_RESULT SET SCORE=#{score}, WEIGHTED_SCORE=#{weightedScore}, OPINION=#{opinion} WHERE ID=#{id}
+    </update>
+    <delete id="deleteResults">DELETE FROM VD_EVAL_RESULT WHERE EVAL_ID=#{evalId}</delete>
+
+    <update id="updateVendorGrade">
+        UPDATE VD_VENDOR SET GRADE_CD=#{gradeCd}, GRADE_NM=#{gradeNm}, LAST_EVAL_YMD=SYSDATE,
+               NEXT_EVAL_YMD=ADD_MONTHS(SYSDATE,12), MOD_DT=SYSTIMESTAMP
+         WHERE VD_CD=#{vdCd} AND DEL_YN='N'
+    </update>
+
+</mapper>

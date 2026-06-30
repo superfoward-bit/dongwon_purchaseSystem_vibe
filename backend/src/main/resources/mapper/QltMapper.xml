@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.quality.mapper.QltMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.quality.QlInspection">
+        SELECT Q.ID, Q.INSP_NO, Q.GR_NO, Q.PO_NO, Q.VD_CD, Q.VD_NM, Q.INSP_QTY,
+               Q.INSP_RESULT, R.CD_NM_KO AS INSP_RESULT_NM,
+               TO_CHAR(Q.INSP_YMD,'YYYY-MM-DD') AS INSP_YMD, Q.STS, C.CD_NM_KO AS STS_NM, Q.REG_ID
+          FROM QL_INSPECTION Q
+          LEFT JOIN CM_CODE C ON C.GRP_CD='QL_STS' AND C.CD=Q.STS AND C.DEL_YN='N'
+          LEFT JOIN CM_CODE R ON R.GRP_CD='INSP_RESULT2' AND R.CD=Q.INSP_RESULT AND R.DEL_YN='N'
+         WHERE Q.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">
+           AND (Q.INSP_NO LIKE '%'||#{keyword}||'%' OR Q.GR_NO LIKE '%'||#{keyword}||'%' OR Q.VD_NM LIKE '%'||#{keyword}||'%')
+        </if>
+        <if test="sts != null and sts != ''">AND Q.STS=#{sts}</if>
+         ORDER BY Q.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.quality.QlInspection">
+        SELECT Q.ID, Q.COMP_CD, Q.INSP_NO, Q.GR_ID, Q.GR_NO, Q.PO_NO, Q.VD_CD, Q.VD_NM, Q.OPER_ORG_CD,
+               Q.INSP_TYP, Q.QM_LOT_NO, Q.LOT_NO, TO_CHAR(Q.MFG_YMD,'YYYY-MM-DD') AS MFG_YMD,
+               TO_CHAR(Q.EXP_YMD,'YYYY-MM-DD') AS EXP_YMD, Q.INSP_QTY, Q.INSP_RESULT, R.CD_NM_KO AS INSP_RESULT_NM,
+               TO_CHAR(Q.INSP_YMD,'YYYY-MM-DD') AS INSP_YMD, Q.INSP_USR_ID,
+               Q.STS, C.CD_NM_KO AS STS_NM, Q.REMARK, Q.REG_ID
+          FROM QL_INSPECTION Q
+          LEFT JOIN CM_CODE C ON C.GRP_CD='QL_STS' AND C.CD=Q.STS AND C.DEL_YN='N'
+          LEFT JOIN CM_CODE R ON R.GRP_CD='INSP_RESULT2' AND R.CD=Q.INSP_RESULT AND R.DEL_YN='N'
+         WHERE Q.ID=#{id} AND Q.DEL_YN='N'
+    </select>
+
+    <select id="findResults" resultType="com.purchasesystem.domain.quality.QlResult">
+        SELECT R.ID, R.INSP_ID, R.ITEM_SEQ, R.INSP_ITEM_NM, R.ITEM_TYP, IT.CD_NM_KO AS ITEM_TYP_NM,
+               R.SPEC_VAL, R.SPEC_LOWER, R.SPEC_UPPER, R.MEASURE_VAL, R.MEASURE_NUM, R.TEST_METHOD,
+               R.UNIT, R.PASS_YN, R.QM_CODE, R.REMARK
+          FROM QL_INSPECTION_RESULT R
+          LEFT JOIN CM_CODE IT ON IT.GRP_CD='INSP_ITEM_TYP' AND IT.CD=R.ITEM_TYP AND IT.DEL_YN='N'
+         WHERE R.INSP_ID=#{inspId} ORDER BY R.ITEM_SEQ
+    </select>
+
+    <insert id="insertInspection" parameterType="com.purchasesystem.domain.quality.QlInspection"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO QL_INSPECTION (COMP_CD, INSP_NO, GR_ID, GR_NO, PO_NO, VD_CD, VD_NM, OPER_ORG_CD,
+                                   INSP_TYP, QM_LOT_NO, LOT_NO, MFG_YMD, EXP_YMD, INSP_QTY, INSP_YMD, INSP_USR_ID, STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{inspNo}, #{grId}, #{grNo}, #{poNo}, #{vdCd}, #{vdNm}, #{operOrgCd},
+                NVL(#{inspTyp},'INCOMING'), #{qmLotNo}, #{lotNo}, TO_DATE(#{mfgYmd},'YYYY-MM-DD'), TO_DATE(#{expYmd},'YYYY-MM-DD'),
+                NVL(#{inspQty},0), TO_DATE(#{inspYmd},'YYYY-MM-DD'), #{inspUsrId}, 'ING', #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <update id="updateResultSummary">UPDATE QL_INSPECTION SET INSP_RESULT=#{inspResult}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <update id="updateStatus">UPDATE QL_INSPECTION SET STS=#{sts}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <update id="deleteInspection">UPDATE QL_INSPECTION SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+
+    <insert id="insertResult" parameterType="com.purchasesystem.domain.quality.QlResult">
+        INSERT INTO QL_INSPECTION_RESULT (INSP_ID, ITEM_SEQ, INSP_ITEM_NM, ITEM_TYP, SPEC_VAL, SPEC_LOWER, SPEC_UPPER,
+               MEASURE_VAL, MEASURE_NUM, TEST_METHOD, UNIT, PASS_YN, QM_CODE, REMARK, REG_ID)
+        VALUES (#{inspId}, #{itemSeq}, #{inspItemNm}, #{itemTyp}, #{specVal}, #{specLower}, #{specUpper},
+               #{measureVal}, #{measureNum}, #{testMethod}, #{unit}, NVL(#{passYn},'Y'), #{qmCode}, #{remark}, 'SYSTEM')
+    </insert>
+    <delete id="deleteResults">DELETE FROM QL_INSPECTION_RESULT WHERE INSP_ID=#{inspId}</delete>
+
+    <!-- 입고확정(CFM) 건 = 검사 대상 -->
+    <select id="findInspectableGrs" resultType="com.purchasesystem.domain.quality.QlInspection">
+        SELECT G.ID AS GR_ID, G.GR_NO, G.PO_NO, G.VD_CD, G.VD_NM, G.OPER_ORG_CD,
+               TO_CHAR(G.GR_YMD,'YYYY-MM-DD') AS INSP_YMD,
+               (SELECT NVL(SUM(GI.GR_QTY),0) FROM GR_RECEIPT_ITEM GI WHERE GI.RECEIPT_ID=G.ID) AS INSP_QTY
+          FROM GR_RECEIPT G
+         WHERE G.DEL_YN='N' AND G.STS='CFM'
+        <if test="keyword != null and keyword != ''">
+           AND (G.GR_NO LIKE '%'||#{keyword}||'%' OR G.VD_NM LIKE '%'||#{keyword}||'%')
+        </if>
+         ORDER BY G.ID DESC
+    </select>
+
+    <select id="findGrHeader" resultType="com.purchasesystem.domain.quality.QlInspection">
+        SELECT G.ID AS GR_ID, G.GR_NO, G.PO_NO, G.VD_CD, G.VD_NM, G.OPER_ORG_CD,
+               (SELECT NVL(SUM(GI.GR_QTY),0) FROM GR_RECEIPT_ITEM GI WHERE GI.RECEIPT_ID=G.ID) AS INSP_QTY,
+               (SELECT GI.LOT_NO FROM GR_RECEIPT_ITEM GI WHERE GI.RECEIPT_ID=G.ID AND GI.LINE_NO=(SELECT MIN(LINE_NO) FROM GR_RECEIPT_ITEM WHERE RECEIPT_ID=G.ID)) AS LOT_NO,
+               (SELECT TO_CHAR(GI.MFG_YMD,'YYYY-MM-DD') FROM GR_RECEIPT_ITEM GI WHERE GI.RECEIPT_ID=G.ID AND GI.LINE_NO=(SELECT MIN(LINE_NO) FROM GR_RECEIPT_ITEM WHERE RECEIPT_ID=G.ID)) AS MFG_YMD,
+               (SELECT TO_CHAR(GI.EXP_YMD,'YYYY-MM-DD') FROM GR_RECEIPT_ITEM GI WHERE GI.RECEIPT_ID=G.ID AND GI.LINE_NO=(SELECT MIN(LINE_NO) FROM GR_RECEIPT_ITEM WHERE RECEIPT_ID=G.ID)) AS EXP_YMD
+          FROM GR_RECEIPT G WHERE G.ID=#{grId} AND G.DEL_YN='N'
+    </select>
+
+</mapper>

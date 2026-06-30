@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.rx.mapper.RxMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.rx.RxRfx">
+        SELECT R.ID, R.COMP_CD, R.RFX_NO, R.RFX_TYP, R.RFX_TITLE,
+               TO_CHAR(R.OPEN_YMD,'YYYY-MM-DD') AS OPEN_YMD, TO_CHAR(R.CLOSE_YMD,'YYYY-MM-DD') AS CLOSE_YMD,
+               R.SEL_VD_CD, R.SEL_VD_NM, R.STS, C.CD_NM_KO AS STS_NM,
+               R.REG_ID, TO_CHAR(R.REG_DT,'YYYY-MM-DD HH24:MI') AS REG_DT
+          FROM RX_RFX R
+          LEFT JOIN CM_CODE C ON C.GRP_CD='RFX_STS' AND C.CD=R.STS AND C.DEL_YN='N'
+         WHERE R.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">
+           AND (R.RFX_NO LIKE '%' || #{keyword} || '%' OR R.RFX_TITLE LIKE '%' || #{keyword} || '%')
+        </if>
+        <if test="sts != null and sts != ''">AND R.STS = #{sts}</if>
+         ORDER BY R.ID DESC
+    </select>
+
+    <select id="findByVendor" resultType="com.purchasesystem.domain.rx.RxRfx">
+        SELECT R.ID, R.RFX_NO, R.RFX_TYP, R.RFX_TITLE,
+               TO_CHAR(R.OPEN_YMD,'YYYY-MM-DD') AS OPEN_YMD, TO_CHAR(R.CLOSE_YMD,'YYYY-MM-DD') AS CLOSE_YMD,
+               R.SEL_VD_CD, R.STS, C.CD_NM_KO AS STS_NM
+          FROM RX_RFX R
+          JOIN RX_RFX_VENDOR V ON V.RFX_ID = R.ID AND V.VD_CD = #{vdCd}
+          LEFT JOIN CM_CODE C ON C.GRP_CD='RFX_STS' AND C.CD=R.STS AND C.DEL_YN='N'
+         WHERE R.DEL_YN='N' AND R.STS IN ('OPEN','SEL')
+         ORDER BY R.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.rx.RxRfx">
+        SELECT R.ID, R.COMP_CD, R.RFX_NO, R.RFX_TYP, R.RFX_TITLE, R.PURC_GRP_CD, R.CHRG_USR_ID,
+               TO_CHAR(R.OPEN_YMD,'YYYY-MM-DD') AS OPEN_YMD, TO_CHAR(R.CLOSE_YMD,'YYYY-MM-DD') AS CLOSE_YMD,
+               R.EVAL_TYP, R.CURR_CD, R.SRC_TYP, R.SRC_ID, R.SEL_VD_CD, R.SEL_VD_NM,
+               R.STS, C.CD_NM_KO AS STS_NM, R.REMARK, R.REG_ID, TO_CHAR(R.REG_DT,'YYYY-MM-DD HH24:MI') AS REG_DT
+          FROM RX_RFX R
+          LEFT JOIN CM_CODE C ON C.GRP_CD='RFX_STS' AND C.CD=R.STS AND C.DEL_YN='N'
+         WHERE R.ID = #{id} AND R.DEL_YN='N'
+    </select>
+
+    <select id="findItems" resultType="com.purchasesystem.domain.rx.RxItem">
+        SELECT ID, RFX_ID, LINE_NO, PR_ITEM_ID, ITEM_CD, ITEM_NM, SPEC, UNIT_CD, QTY, BASE_PRC
+          FROM RX_RFX_ITEM WHERE RFX_ID = #{rfxId} ORDER BY LINE_NO
+    </select>
+
+    <select id="findVendors" resultType="com.purchasesystem.domain.rx.RxVendor">
+        SELECT ID, RFX_ID, VD_CD, VD_NM, RESP_YN, SEL_YN, QUOTE_TOT_AMT,
+               TO_CHAR(QUOTE_YMD,'YYYY-MM-DD') AS QUOTE_YMD
+          FROM RX_RFX_VENDOR WHERE RFX_ID = #{rfxId} ORDER BY VD_CD
+    </select>
+
+    <select id="findQuoteItems" resultType="com.purchasesystem.domain.rx.RxQuoteItem">
+        SELECT ID, RFX_ID, VD_CD, RFX_ITEM_ID, OFFER_PRC, OFFER_AMT,
+               TO_CHAR(DLV_YMD,'YYYY-MM-DD') AS DLV_YMD, REMARK
+          FROM RX_QUOTE_ITEM WHERE RFX_ID = #{rfxId}
+    </select>
+
+    <insert id="insertRfx" parameterType="com.purchasesystem.domain.rx.RxRfx"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO RX_RFX (COMP_CD, RFX_NO, RFX_TYP, RFX_TITLE, PURC_GRP_CD, CHRG_USR_ID,
+                            OPEN_YMD, CLOSE_YMD, EVAL_TYP, CURR_CD, SRC_TYP, SRC_ID, STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{rfxNo}, NVL(#{rfxTyp},'RFQ'), #{rfxTitle}, #{purcGrpCd}, #{chrgUsrId},
+                TO_DATE(#{openYmd},'YYYY-MM-DD'), TO_DATE(#{closeYmd},'YYYY-MM-DD'),
+                NVL(#{evalTyp},'PRICE'), NVL(#{currCd},'KRW'), #{srcTyp}, #{srcId},
+                NVL(#{sts},'TMP'), #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <update id="updateRfx" parameterType="com.purchasesystem.domain.rx.RxRfx">
+        UPDATE RX_RFX SET RFX_TITLE=#{rfxTitle}, PURC_GRP_CD=#{purcGrpCd},
+               OPEN_YMD=TO_DATE(#{openYmd},'YYYY-MM-DD'), CLOSE_YMD=TO_DATE(#{closeYmd},'YYYY-MM-DD'),
+               EVAL_TYP=#{evalTyp}, CURR_CD=#{currCd}, REMARK=#{remark}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP
+         WHERE ID=#{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE RX_RFX SET STS=#{sts}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="updateSelectedVendor">
+        UPDATE RX_RFX SET SEL_VD_CD=#{vdCd}, SEL_VD_NM=#{vdNm}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="deleteRfx">
+        UPDATE RX_RFX SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+
+    <insert id="insertItem" parameterType="com.purchasesystem.domain.rx.RxItem">
+        INSERT INTO RX_RFX_ITEM (RFX_ID, LINE_NO, PR_ITEM_ID, ITEM_CD, ITEM_NM, SPEC, UNIT_CD, QTY, BASE_PRC, REG_ID)
+        VALUES (#{rfxId}, #{lineNo}, #{prItemId}, #{itemCd}, #{itemNm}, #{spec}, #{unitCd},
+                NVL(#{qty},0), NVL(#{basePrc},0), 'SYSTEM')
+    </insert>
+    <delete id="deleteItems">DELETE FROM RX_RFX_ITEM WHERE RFX_ID=#{rfxId}</delete>
+
+    <insert id="insertVendor" parameterType="com.purchasesystem.domain.rx.RxVendor">
+        INSERT INTO RX_RFX_VENDOR (RFX_ID, VD_CD, VD_NM, REG_ID)
+        VALUES (#{rfxId}, #{vdCd}, #{vdNm}, 'SYSTEM')
+    </insert>
+    <delete id="deleteVendors">DELETE FROM RX_RFX_VENDOR WHERE RFX_ID=#{rfxId}</delete>
+
+    <delete id="deleteQuoteItems">DELETE FROM RX_QUOTE_ITEM WHERE RFX_ID=#{rfxId} AND VD_CD=#{vdCd}</delete>
+    <insert id="insertQuoteItem" parameterType="com.purchasesystem.domain.rx.RxQuoteItem">
+        INSERT INTO RX_QUOTE_ITEM (RFX_ID, VD_CD, RFX_ITEM_ID, OFFER_PRC, OFFER_AMT, DLV_YMD, REMARK, REG_ID)
+        VALUES (#{rfxId}, #{vdCd}, #{rfxItemId}, NVL(#{offerPrc},0), NVL(#{offerAmt},0),
+                TO_DATE(#{dlvYmd},'YYYY-MM-DD'), #{remark}, 'SYSTEM')
+    </insert>
+    <update id="updateVendorResp">
+        UPDATE RX_RFX_VENDOR SET RESP_YN='Y', QUOTE_TOT_AMT=#{totAmt}, QUOTE_YMD=SYSDATE
+         WHERE RFX_ID=#{rfxId} AND VD_CD=#{vdCd}
+    </update>
+    <update id="clearVendorSel">UPDATE RX_RFX_VENDOR SET SEL_YN='N' WHERE RFX_ID=#{rfxId}</update>
+    <update id="setVendorSel">UPDATE RX_RFX_VENDOR SET SEL_YN='Y' WHERE RFX_ID=#{rfxId} AND VD_CD=#{vdCd}</update>
+
+</mapper>

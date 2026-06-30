@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.item.mapper.AttrMapper">
+
+    <select id="findCateAttrs" resultType="com.purchasesystem.domain.item.ItCateAttr">
+        SELECT A.ID, A.CATE_CD, A.ATTR_SEQ, A.ATTR_NM, A.ATTR_TYP, T.CD_NM_KO AS ATTR_TYP_NM,
+               A.OPTION_VALS, A.REQUIRED_YN, A.SORT_NO, A.USE_YN
+          FROM IT_CATE_ATTR A
+          LEFT JOIN CM_CODE T ON T.GRP_CD='ATTR_TYP' AND T.CD=A.ATTR_TYP AND T.DEL_YN='N'
+         WHERE A.CATE_CD=#{cateCd} AND A.DEL_YN='N'
+         ORDER BY A.SORT_NO, A.ATTR_SEQ
+    </select>
+    <insert id="insertCateAttr" parameterType="com.purchasesystem.domain.item.ItCateAttr">
+        INSERT INTO IT_CATE_ATTR (CATE_CD, ATTR_SEQ, ATTR_NM, ATTR_TYP, OPTION_VALS, REQUIRED_YN, SORT_NO, USE_YN, REG_ID)
+        VALUES (#{cateCd}, #{attrSeq}, #{attrNm}, NVL(#{attrTyp},'TEXT'), #{optionVals}, NVL(#{requiredYn},'N'), NVL(#{sortNo},1), NVL(#{useYn},'Y'), 'SYSTEM')
+    </insert>
+    <delete id="deleteCateAttrs">DELETE FROM IT_CATE_ATTR WHERE CATE_CD=#{cateCd}</delete>
+
+    <select id="findItemAttrs" resultType="com.purchasesystem.domain.item.ItCateAttr">
+        SELECT ATTR_NM, ATTR_VAL FROM IT_ITEM_ATTR WHERE ITEM_ID=#{itemId} ORDER BY ID
+    </select>
+    <insert id="insertItemAttr">
+        INSERT INTO IT_ITEM_ATTR (ITEM_ID, ATTR_NM, ATTR_VAL, REG_ID) VALUES (#{itemId}, #{attrNm}, #{attrVal}, 'SYSTEM')
+    </insert>
+    <delete id="deleteItemAttrs">DELETE FROM IT_ITEM_ATTR WHERE ITEM_ID=#{itemId}</delete>
+
+</mapper>

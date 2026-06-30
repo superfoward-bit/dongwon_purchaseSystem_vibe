@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.common.docno.mapper.DocNoMapper">
+
+    <select id="selectForUpdate" resultType="com.purchasesystem.common.docno.CmDocNo">
+        SELECT ID, DOC_TYP, PREFIX, DATE_FMT, SEQ_LEN, LAST_YMD, LAST_SEQ
+          FROM CM_DOC_NO
+         WHERE DOC_TYP = #{docTyp} AND USE_YN = 'Y'
+        FOR UPDATE
+    </select>
+
+    <update id="updateSeq">
+        UPDATE CM_DOC_NO
+           SET LAST_YMD = #{lastYmd}, LAST_SEQ = #{lastSeq}, MOD_DT = SYSTIMESTAMP
+         WHERE ID = #{id}
+    </update>
+
+</mapper>

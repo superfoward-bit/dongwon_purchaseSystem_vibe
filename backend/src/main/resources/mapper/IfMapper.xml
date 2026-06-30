@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.iface.mapper.IfMapper">
+
+    <sql id="cols">
+        I.ID, I.COMP_CD, I.IF_NO, I.IF_TYP, T.CD_NM_KO AS IF_TYP_NM, I.IF_NM, I.DIRECTION, I.SYS_CD,
+        I.REF_TYP, I.REF_ID, I.REF_NO, I.PAYLOAD, I.IF_STATUS, S.CD_NM_KO AS IF_STATUS_NM,
+        TO_CHAR(I.SENT_DT,'YYYY-MM-DD HH24:MI:SS') AS SENT_DT, I.RESULT_MSG, I.RETRY_CNT, I.REG_ID,
+        TO_CHAR(I.REG_DT,'YYYY-MM-DD HH24:MI') AS REG_DT
+    </sql>
+
+    <select id="findList" resultType="com.purchasesystem.domain.iface.IfInterface">
+        SELECT <include refid="cols"/>
+          FROM IF_INTERFACE I
+          LEFT JOIN CM_CODE T ON T.GRP_CD='IF_TYP' AND T.CD=I.IF_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='IF_STATUS' AND S.CD=I.IF_STATUS AND S.DEL_YN='N'
+         WHERE 1=1
+        <if test="ifTyp != null and ifTyp != ''">AND I.IF_TYP=#{ifTyp}</if>
+        <if test="ifStatus != null and ifStatus != ''">AND I.IF_STATUS=#{ifStatus}</if>
+        <if test="keyword != null and keyword != ''">AND (I.IF_NO LIKE '%'||#{keyword}||'%' OR I.REF_NO LIKE '%'||#{keyword}||'%' OR I.IF_NM LIKE '%'||#{keyword}||'%')</if>
+         ORDER BY I.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.iface.IfInterface">
+        SELECT <include refid="cols"/>
+          FROM IF_INTERFACE I
+          LEFT JOIN CM_CODE T ON T.GRP_CD='IF_TYP' AND T.CD=I.IF_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='IF_STATUS' AND S.CD=I.IF_STATUS AND S.DEL_YN='N'
+         WHERE I.ID=#{id}
+    </select>
+
+    <insert id="insert" parameterType="com.purchasesystem.domain.iface.IfInterface"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO IF_INTERFACE (COMP_CD, IF_NO, IF_TYP, IF_NM, DIRECTION, SYS_CD, REF_TYP, REF_ID, REF_NO, PAYLOAD, IF_STATUS, REG_ID)
+        VALUES (#{compCd}, #{ifNo}, #{ifTyp}, #{ifNm}, NVL(#{direction},'SEND'), #{sysCd}, #{refTyp}, #{refId}, #{refNo}, #{payload}, 'READY', #{regId})
+    </insert>
+
+    <update id="updateResult">
+        UPDATE IF_INTERFACE SET IF_STATUS=#{ifStatus}, RESULT_MSG=#{resultMsg}, SENT_DT=SYSTIMESTAMP
+        <if test="retry">, RETRY_CNT=RETRY_CNT+1</if>
+         WHERE ID=#{id}
+    </update>
+
+</mapper>

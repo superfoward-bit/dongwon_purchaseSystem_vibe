@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.pp.mapper.PpMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.pp.PpPlan">
+        SELECT P.ID, P.PLAN_NO, P.PLAN_YEAR, P.PLAN_NM, P.TOT_PLAN_AMT, P.STS, S.CD_NM_KO AS STS_NM, P.REG_ID
+          FROM PP_PLAN P
+          LEFT JOIN CM_CODE S ON S.GRP_CD='PP_STS' AND S.CD=P.STS AND S.DEL_YN='N'
+         WHERE P.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">
+           AND (P.PLAN_NO LIKE '%'||#{keyword}||'%' OR P.PLAN_NM LIKE '%'||#{keyword}||'%')
+        </if>
+        <if test="sts != null and sts != ''">AND P.STS=#{sts}</if>
+        <if test="planYear != null and planYear != ''">AND P.PLAN_YEAR=#{planYear}</if>
+         ORDER BY P.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.pp.PpPlan">
+        SELECT P.ID, P.COMP_CD, P.PLAN_NO, P.PLAN_YEAR, P.PLAN_NM, P.PURC_GRP_CD, P.TOT_PLAN_AMT,
+               P.STS, S.CD_NM_KO AS STS_NM, P.REMARK, P.REG_ID
+          FROM PP_PLAN P
+          LEFT JOIN CM_CODE S ON S.GRP_CD='PP_STS' AND S.CD=P.STS AND S.DEL_YN='N'
+         WHERE P.ID=#{id} AND P.DEL_YN='N'
+    </select>
+
+    <select id="findItems" resultType="com.purchasesystem.domain.pp.PpPlanItem">
+        SELECT PI.ID, PI.PLAN_ID, PI.LINE_NO, PI.ITEM_CD, PI.ITEM_NM, PI.UNIT_CD, PI.PLAN_QTY, PI.PLAN_AMT, PI.REMARK,
+               NVL((SELECT SUM(GI.AMT) FROM GR_RECEIPT_ITEM GI
+                      JOIN GR_RECEIPT GR ON GR.ID=GI.RECEIPT_ID AND GR.DEL_YN='N' AND GR.STS='CFM'
+                           AND TO_CHAR(GR.GR_YMD,'YYYY')=#{year}
+                     WHERE GI.ITEM_CD=PI.ITEM_CD),0) AS ACTUAL_AMT
+          FROM PP_PLAN_ITEM PI WHERE PI.PLAN_ID=#{planId} ORDER BY PI.LINE_NO
+    </select>
+
+    <insert id="insertPlan" parameterType="com.purchasesystem.domain.pp.PpPlan"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO PP_PLAN (COMP_CD, PLAN_NO, PLAN_YEAR, PLAN_NM, PURC_GRP_CD, TOT_PLAN_AMT, STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{planNo}, #{planYear}, #{planNm}, #{purcGrpCd}, NVL(#{totPlanAmt},0), NVL(#{sts},'DRAFT'), #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <update id="updatePlan" parameterType="com.purchasesystem.domain.pp.PpPlan">
+        UPDATE PP_PLAN SET PLAN_YEAR=#{planYear}, PLAN_NM=#{planNm}, PURC_GRP_CD=#{purcGrpCd}, TOT_PLAN_AMT=NVL(#{totPlanAmt},0),
+               REMARK=#{remark}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="updateStatus">UPDATE PP_PLAN SET STS=#{sts}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <update id="deletePlan">UPDATE PP_PLAN SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+
+    <insert id="insertItem" parameterType="com.purchasesystem.domain.pp.PpPlanItem">
+        INSERT INTO PP_PLAN_ITEM (PLAN_ID, LINE_NO, ITEM_CD, ITEM_NM, UNIT_CD, PLAN_QTY, PLAN_AMT, REMARK, REG_ID)
+        VALUES (#{planId}, #{lineNo}, #{itemCd}, #{itemNm}, #{unitCd}, NVL(#{planQty},0), NVL(#{planAmt},0), #{remark}, 'SYSTEM')
+    </insert>
+    <delete id="deleteItems">DELETE FROM PP_PLAN_ITEM WHERE PLAN_ID=#{planId}</delete>
+
+</mapper>

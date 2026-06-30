@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.report.mapper.ReportMapper">
+
+    <select id="grMonthly" resultType="map">
+        SELECT TO_CHAR(GR_YMD,'YYYY-MM') AS "ym", COUNT(*) AS "cnt", NVL(SUM(TOT_AMT),0) AS "amt"
+          FROM GR_RECEIPT
+         WHERE DEL_YN='N' AND STS='CFM' AND GR_YMD IS NOT NULL
+           AND TO_CHAR(GR_YMD,'YYYY') = #{year}
+         GROUP BY TO_CHAR(GR_YMD,'YYYY-MM')
+         ORDER BY "ym"
+    </select>
+
+    <select id="grByVendor" resultType="map">
+        SELECT VD_CD AS "vdCd", VD_NM AS "vdNm", COUNT(*) AS "cnt", NVL(SUM(TOT_AMT),0) AS "amt"
+          FROM GR_RECEIPT
+         WHERE DEL_YN='N' AND STS='CFM'
+           AND (#{year} IS NULL OR TO_CHAR(GR_YMD,'YYYY') = #{year})
+         GROUP BY VD_CD, VD_NM
+         ORDER BY "amt" DESC
+    </select>
+
+    <select id="grByItem" resultType="map">
+        SELECT I.ITEM_CD AS "itemCd", I.ITEM_NM AS "itemNm",
+               NVL(SUM(I.GR_QTY),0) AS "qty", NVL(SUM(I.AMT),0) AS "amt"
+          FROM GR_RECEIPT_ITEM I
+          JOIN GR_RECEIPT R ON R.ID = I.RECEIPT_ID AND R.DEL_YN='N' AND R.STS='CFM'
+         WHERE (#{year} IS NULL OR TO_CHAR(R.GR_YMD,'YYYY') = #{year})
+         GROUP BY I.ITEM_CD, I.ITEM_NM
+         ORDER BY "amt" DESC
+    </select>
+
+    <select id="poMonthly" resultType="map">
+        SELECT TO_CHAR(PO_YMD,'YYYY-MM') AS "ym", COUNT(*) AS "cnt", NVL(SUM(TOT_AMT),0) AS "amt"
+          FROM PO_ORDER
+         WHERE DEL_YN='N' AND STS <![CDATA[<>]]> 'CANCEL' AND PO_YMD IS NOT NULL
+           AND TO_CHAR(PO_YMD,'YYYY') = #{year}
+         GROUP BY TO_CHAR(PO_YMD,'YYYY-MM')
+         ORDER BY "ym"
+    </select>
+
+    <select id="priceHistory" resultType="map">
+        SELECT * FROM (
+          SELECT H.VD_CD AS "vdCd", H.ITEM_CD AS "itemCd", C.CD_NM_KO AS "chgTyp",
+                 H.OLD_PRC AS "oldPrc", H.NEW_PRC AS "newPrc", H.NEW_SD AS "newSd", H.NEW_ED AS "newEd",
+                 TO_CHAR(H.REG_DT,'YYYY-MM-DD HH24:MI') AS "regDt"
+            FROM IP_PRICE_HIS H
+            LEFT JOIN CM_CODE C ON C.GRP_CD='IP_CHG_TYP' AND C.CD=H.CHG_TYP AND C.DEL_YN='N'
+           WHERE 1=1
+            <if test="vdCd != null and vdCd != ''">AND H.VD_CD=#{vdCd}</if>
+            <if test="itemCd != null and itemCd != ''">AND H.ITEM_CD=#{itemCd}</if>
+           ORDER BY H.ID DESC
+        ) WHERE ROWNUM &lt;= 100
+    </select>
+
+    <select id="settleAdj" resultType="map">
+        SELECT T.CD_NM_KO AS "adjTypNm", COUNT(*) AS "cnt", NVL(SUM(A.ADJ_AMT),0) AS "amt"
+          FROM CL_CLOSE_ADJ A
+          JOIN CL_CLOSE C ON C.ID = A.CLOSE_ID AND C.DEL_YN='N'
+          LEFT JOIN CM_CODE T ON T.GRP_CD='CL_ADJ_TYP' AND T.CD=A.ADJ_TYP AND T.DEL_YN='N'
+         WHERE (#{closeYm} IS NULL OR C.CLOSE_YM = #{closeYm})
+         GROUP BY T.CD_NM_KO
+         ORDER BY "amt"
+    </select>
+
+    <select id="summary" resultType="map">
+        SELECT
+          (SELECT NVL(SUM(TOT_AMT),0) FROM GR_RECEIPT WHERE DEL_YN='N' AND STS='CFM' AND TO_CHAR(GR_YMD,'YYYY')=#{year}) AS "grAmt",
+          (SELECT COUNT(*) FROM GR_RECEIPT WHERE DEL_YN='N' AND STS='CFM' AND TO_CHAR(GR_YMD,'YYYY')=#{year}) AS "grCnt",
+          (SELECT NVL(SUM(TOT_AMT),0) FROM PO_ORDER WHERE DEL_YN='N' AND STS<![CDATA[<>]]>'CANCEL' AND TO_CHAR(PO_YMD,'YYYY')=#{year}) AS "poAmt",
+          (SELECT COUNT(*) FROM PO_ORDER WHERE DEL_YN='N' AND STS<![CDATA[<>]]>'CANCEL' AND TO_CHAR(PO_YMD,'YYYY')=#{year}) AS "poCnt"
+        FROM DUAL
+    </select>
+
+</mapper>

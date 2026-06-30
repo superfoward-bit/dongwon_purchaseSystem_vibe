@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.cl.mapper.ClAdjMapper">
+
+    <select id="findRateList" resultType="com.purchasesystem.domain.cl.ClAdjRate">
+        SELECT R.ID, R.COMP_CD, R.VD_CD, R.ADJ_TYP, T.CD_NM_KO AS ADJ_TYP_NM, R.CALC_BASE,
+               R.RATE, R.UNIT_AMT, R.SIGN_TYP,
+               TO_CHAR(R.VALID_SD,'YYYY-MM-DD') AS VALID_SD, TO_CHAR(R.VALID_ED,'YYYY-MM-DD') AS VALID_ED,
+               R.REMARK, R.USE_YN, R.REG_ID
+          FROM CL_ADJ_RATE R
+          LEFT JOIN CM_CODE T ON T.GRP_CD='CL_ADJ_TYP' AND T.CD=R.ADJ_TYP AND T.DEL_YN='N'
+         WHERE R.DEL_YN='N'
+        <if test="vdCd != null and vdCd != ''">AND R.VD_CD=#{vdCd}</if>
+        <if test="adjTyp != null and adjTyp != ''">AND R.ADJ_TYP=#{adjTyp}</if>
+         ORDER BY R.ADJ_TYP, R.VD_CD NULLS FIRST
+    </select>
+
+    <!-- 유효 조정율: 협력사 전용 우선, 없으면 공통(VD_CD NULL). 조정유형별 1건 -->
+    <select id="findActiveRates" resultType="com.purchasesystem.domain.cl.ClAdjRate">
+        SELECT ID, COMP_CD, VD_CD, ADJ_TYP, ADJ_TYP_NM, CALC_BASE, RATE, UNIT_AMT, SIGN_TYP, REMARK FROM (
+          SELECT R.ID, R.COMP_CD, R.VD_CD, R.ADJ_TYP, T.CD_NM_KO AS ADJ_TYP_NM, R.CALC_BASE,
+                 R.RATE, R.UNIT_AMT, R.SIGN_TYP, R.REMARK,
+                 ROW_NUMBER() OVER (PARTITION BY R.ADJ_TYP ORDER BY R.VD_CD DESC NULLS LAST) AS RN
+            FROM CL_ADJ_RATE R
+            LEFT JOIN CM_CODE T ON T.GRP_CD='CL_ADJ_TYP' AND T.CD=R.ADJ_TYP AND T.DEL_YN='N'
+           WHERE R.DEL_YN='N' AND R.USE_YN='Y' AND R.COMP_CD=#{compCd}
+             AND (R.VD_CD=#{vdCd} OR R.VD_CD IS NULL)
+             AND TO_DATE(#{ymd},'YYYY-MM-DD') BETWEEN R.VALID_SD AND R.VALID_ED
+        ) WHERE RN = 1 ORDER BY ADJ_TYP
+    </select>
+
+    <select id="findRateById" resultType="com.purchasesystem.domain.cl.ClAdjRate">
+        SELECT R.ID, R.COMP_CD, R.VD_CD, R.ADJ_TYP, R.CALC_BASE, R.RATE, R.UNIT_AMT, R.SIGN_TYP,
+               TO_CHAR(R.VALID_SD,'YYYY-MM-DD') AS VALID_SD, TO_CHAR(R.VALID_ED,'YYYY-MM-DD') AS VALID_ED,
+               R.REMARK, R.USE_YN FROM CL_ADJ_RATE R WHERE R.ID=#{id} AND R.DEL_YN='N'
+    </select>
+
+    <insert id="insertRate" parameterType="com.purchasesystem.domain.cl.ClAdjRate"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO CL_ADJ_RATE (COMP_CD, VD_CD, ADJ_TYP, CALC_BASE, RATE, UNIT_AMT, SIGN_TYP,
+               VALID_SD, VALID_ED, REMARK, USE_YN, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{vdCd}, #{adjTyp}, NVL(#{calcBase},'SUPL'), NVL(#{rate},0), NVL(#{unitAmt},0), NVL(#{signTyp},'-'),
+               TO_DATE(#{validSd},'YYYY-MM-DD'), TO_DATE(#{validEd},'YYYY-MM-DD'), #{remark}, NVL(#{useYn},'Y'), #{regId}, #{regId})
+    </insert>
+
+    <update id="updateRate" parameterType="com.purchasesystem.domain.cl.ClAdjRate">
+        UPDATE CL_ADJ_RATE SET VD_CD=#{vdCd}, ADJ_TYP=#{adjTyp}, CALC_BASE=#{calcBase}, RATE=NVL(#{rate},0),
+               UNIT_AMT=NVL(#{unitAmt},0), SIGN_TYP=#{signTyp}, VALID_SD=TO_DATE(#{validSd},'YYYY-MM-DD'),
+               VALID_ED=TO_DATE(#{validEd},'YYYY-MM-DD'), REMARK=#{remark}, USE_YN=#{useYn}, MOD_ID=#{regId}, MOD_DT=SYSTIMESTAMP
+         WHERE ID=#{id}
+    </update>
+    <update id="deleteRate">UPDATE CL_ADJ_RATE SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+
+    <select id="findAdjs" resultType="com.purchasesystem.domain.cl.ClCloseAdj">
+        SELECT A.ID, A.CLOSE_ID, A.LINE_NO, A.ADJ_TYP, T.CD_NM_KO AS ADJ_TYP_NM, A.CALC_BASE,
+               A.BASE_AMT, A.RATE, A.UNIT_AMT, A.SIGN_TYP, A.ADJ_AMT, A.REMARK
+          FROM CL_CLOSE_ADJ A
+          LEFT JOIN CM_CODE T ON T.GRP_CD='CL_ADJ_TYP' AND T.CD=A.ADJ_TYP AND T.DEL_YN='N'
+         WHERE A.CLOSE_ID=#{closeId} ORDER BY A.LINE_NO
+    </select>
+
+    <insert id="insertAdj" parameterType="com.purchasesystem.domain.cl.ClCloseAdj">
+        INSERT INTO CL_CLOSE_ADJ (CLOSE_ID, LINE_NO, ADJ_TYP, CALC_BASE, BASE_AMT, RATE, UNIT_AMT, SIGN_TYP, ADJ_AMT, REMARK, REG_ID)
+        VALUES (#{closeId}, #{lineNo}, #{adjTyp}, #{calcBase}, NVL(#{baseAmt},0), NVL(#{rate},0), NVL(#{unitAmt},0),
+               #{signTyp}, NVL(#{adjAmt},0), #{remark}, 'SYSTEM')
+    </insert>
+    <delete id="deleteAdjs">DELETE FROM CL_CLOSE_ADJ WHERE CLOSE_ID=#{closeId}</delete>
+
+    <update id="updateCloseAmounts">
+        UPDATE CL_CLOSE SET ADJ_AMT=#{adjAmt}, NET_AMT=#{netAmt}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{closeId}
+    </update>
+
+</mapper>

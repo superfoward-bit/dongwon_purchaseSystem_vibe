@@ -1,0 +1,23 @@
+-- =============================================================
+-- 구매시스템 SEED - 46. 발주 고도화
+-- =============================================================
+
+-- 발주유형
+INSERT INTO CM_CODE_GRP (GRP_CD, GRP_NM, REG_ID) VALUES ('PO_TYP', '발주유형', 'SYSTEM');
+INSERT INTO CM_CODE (GRP_CD, CD, CD_NM_KO, SORT_NO, REG_ID) VALUES ('PO_TYP', 'STD', '표준발주', 1, 'SYSTEM');
+INSERT INTO CM_CODE (GRP_CD, CD, CD_NM_KO, SORT_NO, REG_ID) VALUES ('PO_TYP', 'CONST', '공사·용역발주', 2, 'SYSTEM');
+INSERT INTO CM_CODE (GRP_CD, CD, CD_NM_KO, SORT_NO, REG_ID) VALUES ('PO_TYP', 'PRICE', '단가계약발주', 3, 'SYSTEM');
+INSERT INTO CM_CODE (GRP_CD, CD, CD_NM_KO, SORT_NO, REG_ID) VALUES ('PO_TYP', 'EMERG', '긴급발주', 4, 'SYSTEM');
+
+-- 구매유형
+INSERT INTO CM_CODE_GRP (GRP_CD, GRP_NM, REG_ID) VALUES ('PURC_TYP', '구매유형', 'SYSTEM');
+INSERT INTO CM_CODE (GRP_CD, CD, CD_NM_KO, SORT_NO, REG_ID) VALUES ('PURC_TYP', 'MT', '자재', 1, 'SYSTEM');
+INSERT INTO CM_CODE (GRP_CD, CD, CD_NM_KO, SORT_NO, REG_ID) VALUES ('PURC_TYP', 'CT', '공사·용역', 2, 'SYSTEM');
+
+-- 분할결제 유형
+INSERT INTO CM_CODE_GRP (GRP_CD, GRP_NM, REG_ID) VALUES ('PO_PAY_TYP', '분할결제 유형', 'SYSTEM');
+INSERT INTO CM_CODE (GRP_CD, CD, CD_NM_KO, SORT_NO, REG_ID) VALUES ('PO_PAY_TYP', 'PRE', '선금', 1, 'SYSTEM');
+INSERT INTO CM_CODE (GRP_CD, CD, CD_NM_KO, SORT_NO, REG_ID) VALUES ('PO_PAY_TYP', 'PROG', '기성', 2, 'SYSTEM');
+INSERT INTO CM_CODE (GRP_CD, CD, CD_NM_KO, SORT_NO, REG_ID) VALUES ('PO_PAY_TYP', 'BAL', '잔금', 3, 'SYSTEM');
+
+COMMIT;

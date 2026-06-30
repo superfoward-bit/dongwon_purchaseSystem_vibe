@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.dashboard.mapper.DashboardMapper">
+
+    <!-- 카드 -->
+    <select id="countPrOpen" resultType="int">
+        SELECT COUNT(*) FROM PR_REQUEST WHERE DEL_YN='N' AND STS IN ('TMP','REQ')
+    </select>
+    <select id="countPoDone" resultType="int">
+        SELECT COUNT(*) FROM PO_ORDER WHERE DEL_YN='N' AND STS='PC'
+    </select>
+    <select id="countGrConfirmed" resultType="int">
+        SELECT COUNT(*) FROM GR_RECEIPT WHERE DEL_YN='N' AND STS='CFM'
+    </select>
+    <select id="countRfxOpen" resultType="int">
+        SELECT COUNT(*) FROM RX_RFX WHERE DEL_YN='N' AND STS='OPEN'
+    </select>
+    <select id="poAmtThisMonth" resultType="java.math.BigDecimal">
+        SELECT NVL(SUM(TOT_AMT),0) FROM PO_ORDER
+         WHERE DEL_YN='N' AND STS='PC' AND TO_CHAR(PO_YMD,'YYYYMM') = TO_CHAR(SYSDATE,'YYYYMM')
+    </select>
+
+    <!-- 상태 분포 -->
+    <select id="prByStatus" resultType="com.purchasesystem.domain.dashboard.dto.StatCount">
+        SELECT R.STS AS CODE, NVL(C.CD_NM_KO, R.STS) AS NAME, COUNT(*) AS CNT
+          FROM PR_REQUEST R LEFT JOIN CM_CODE C ON C.GRP_CD='PR_STS' AND C.CD=R.STS AND C.DEL_YN='N'
+         WHERE R.DEL_YN='N' GROUP BY R.STS, C.CD_NM_KO ORDER BY R.STS
+    </select>
+    <select id="poByStatus" resultType="com.purchasesystem.domain.dashboard.dto.StatCount">
+        SELECT O.STS AS CODE, NVL(C.CD_NM_KO, O.STS) AS NAME, COUNT(*) AS CNT
+          FROM PO_ORDER O LEFT JOIN CM_CODE C ON C.GRP_CD='PO_STS' AND C.CD=O.STS AND C.DEL_YN='N'
+         WHERE O.DEL_YN='N' GROUP BY O.STS, C.CD_NM_KO ORDER BY O.STS
+    </select>
+    <select id="grByStatus" resultType="com.purchasesystem.domain.dashboard.dto.StatCount">
+        SELECT G.STS AS CODE, NVL(C.CD_NM_KO, G.STS) AS NAME, COUNT(*) AS CNT
+          FROM GR_RECEIPT G LEFT JOIN CM_CODE C ON C.GRP_CD='GR_STS' AND C.CD=G.STS AND C.DEL_YN='N'
+         WHERE G.DEL_YN='N' GROUP BY G.STS, C.CD_NM_KO ORDER BY G.STS
+    </select>
+    <select id="vendorByGrade" resultType="com.purchasesystem.domain.dashboard.dto.StatCount">
+        SELECT NVL(GRADE_CD,'-') AS CODE, NVL(GRADE_NM,'미평가') AS NAME, COUNT(*) AS CNT
+          FROM VD_VENDOR WHERE DEL_YN='N' GROUP BY GRADE_CD, GRADE_NM ORDER BY GRADE_CD NULLS LAST
+    </select>
+
+    <!-- 월별 발주금액 (최근 6개월) -->
+    <select id="poMonthly" resultType="com.purchasesystem.domain.dashboard.dto.MonthAmt">
+        SELECT YM, AMT FROM (
+          SELECT TO_CHAR(PO_YMD,'YYYYMM') AS YM, SUM(TOT_AMT) AS AMT
+            FROM PO_ORDER
+           WHERE DEL_YN='N' AND STS='PC' AND PO_YMD >= ADD_MONTHS(TRUNC(SYSDATE,'MM'), -5)
+           GROUP BY TO_CHAR(PO_YMD,'YYYYMM')
+        ) ORDER BY YM
+    </select>
+
+    <!-- 최근 문서 -->
+    <select id="recentPo" resultType="com.purchasesystem.domain.dashboard.dto.RecentDoc">
+        SELECT * FROM (
+          SELECT O.ID, O.PO_NO AS DOC_NO, O.PO_TITLE AS TITLE, O.VD_NM AS VD_NM, O.TOT_AMT AS AMT,
+                 C.CD_NM_KO AS STS_NM, TO_CHAR(O.REG_DT,'YYYY-MM-DD HH24:MI') AS REG_DT
+            FROM PO_ORDER O LEFT JOIN CM_CODE C ON C.GRP_CD='PO_STS' AND C.CD=O.STS AND C.DEL_YN='N'
+           WHERE O.DEL_YN='N' ORDER BY O.ID DESC
+        ) WHERE ROWNUM &lt;= 5
+    </select>
+    <select id="recentGr" resultType="com.purchasesystem.domain.dashboard.dto.RecentDoc">
+        SELECT * FROM (
+          SELECT G.ID, G.GR_NO AS DOC_NO, G.PO_NO AS TITLE, G.VD_NM AS VD_NM, G.TOT_AMT AS AMT,
+                 C.CD_NM_KO AS STS_NM, TO_CHAR(G.REG_DT,'YYYY-MM-DD HH24:MI') AS REG_DT
+            FROM GR_RECEIPT G LEFT JOIN CM_CODE C ON C.GRP_CD='GR_STS' AND C.CD=G.STS AND C.DEL_YN='N'
+           WHERE G.DEL_YN='N' ORDER BY G.ID DESC
+        ) WHERE ROWNUM &lt;= 5
+    </select>
+
+</mapper>

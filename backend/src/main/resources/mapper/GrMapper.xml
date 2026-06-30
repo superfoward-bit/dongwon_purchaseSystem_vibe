@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.gr.mapper.GrMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.gr.GrReceipt">
+        SELECT G.ID, G.COMP_CD, G.GR_NO, G.PO_ID, G.PO_NO, G.VD_CD, G.VD_NM,
+               TO_CHAR(G.GR_YMD, 'YYYY-MM-DD') AS GR_YMD, G.TOT_AMT, G.STS,
+               C.CD_NM_KO AS STS_NM, G.REG_ID, TO_CHAR(G.REG_DT, 'YYYY-MM-DD HH24:MI') AS REG_DT
+          FROM GR_RECEIPT G
+          LEFT JOIN CM_CODE C ON C.GRP_CD='GR_STS' AND C.CD=G.STS AND C.DEL_YN='N'
+         WHERE G.DEL_YN = 'N'
+        <if test="keyword != null and keyword != ''">
+           AND (G.GR_NO LIKE '%' || #{keyword} || '%' OR G.PO_NO LIKE '%' || #{keyword} || '%'
+                OR G.VD_NM LIKE '%' || #{keyword} || '%')
+        </if>
+        <if test="sts != null and sts != ''">AND G.STS = #{sts}</if>
+         ORDER BY G.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.gr.GrReceipt">
+        SELECT G.ID, G.COMP_CD, G.GR_NO, G.PO_ID, G.PO_NO, G.VD_CD, G.VD_NM, G.OPER_ORG_CD,
+               G.WH_CD, WH.CD_NM_KO AS WH_NM, G.DELY_NO,
+               TO_CHAR(G.GR_YMD, 'YYYY-MM-DD') AS GR_YMD, G.INSP_USR_ID,
+               TO_CHAR(G.INSP_YMD, 'YYYY-MM-DD') AS INSP_YMD, G.TOT_AMT, G.STS,
+               C.CD_NM_KO AS STS_NM, G.REMARK, G.REG_ID, TO_CHAR(G.REG_DT,'YYYY-MM-DD HH24:MI') AS REG_DT
+          FROM GR_RECEIPT G
+          LEFT JOIN CM_CODE C ON C.GRP_CD='GR_STS' AND C.CD=G.STS AND C.DEL_YN='N'
+          LEFT JOIN CM_CODE WH ON WH.GRP_CD='WH' AND WH.CD=G.WH_CD AND WH.DEL_YN='N'
+         WHERE G.ID = #{id} AND G.DEL_YN = 'N'
+    </select>
+
+    <select id="findItems" resultType="com.purchasesystem.domain.gr.GrItem">
+        SELECT ID, RECEIPT_ID, LINE_NO, PO_ITEM_ID, ITEM_CD, ITEM_NM, SPEC, UNIT_CD,
+               PO_QTY, GR_QTY, INSP_PASS_QTY, INSP_FAIL_QTY, PRC, TAX_TYP, AMT, INSP_RESULT,
+               LOT_NO, TO_CHAR(MFG_YMD,'YYYY-MM-DD') AS MFG_YMD, TO_CHAR(EXP_YMD,'YYYY-MM-DD') AS EXP_YMD, REMARK
+          FROM GR_RECEIPT_ITEM WHERE RECEIPT_ID = #{receiptId} ORDER BY LINE_NO
+    </select>
+
+    <insert id="insertReceipt" parameterType="com.purchasesystem.domain.gr.GrReceipt"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO GR_RECEIPT (COMP_CD, GR_NO, PO_ID, PO_NO, VD_CD, VD_NM, OPER_ORG_CD, WH_CD, DELY_NO,
+                                GR_YMD, INSP_USR_ID, INSP_YMD, TOT_AMT, STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{grNo}, #{poId}, #{poNo}, #{vdCd}, #{vdNm}, #{operOrgCd}, #{whCd}, #{delyNo},
+                TO_DATE(#{grYmd},'YYYY-MM-DD'), #{inspUsrId}, TO_DATE(#{inspYmd},'YYYY-MM-DD'),
+                NVL(#{totAmt},0), NVL(#{sts},'TMP'), #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <update id="updateStatus">
+        UPDATE GR_RECEIPT SET STS=#{sts}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="deleteReceipt">
+        UPDATE GR_RECEIPT SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+
+    <insert id="insertItem" parameterType="com.purchasesystem.domain.gr.GrItem">
+        INSERT INTO GR_RECEIPT_ITEM (RECEIPT_ID, LINE_NO, PO_ITEM_ID, ITEM_CD, ITEM_NM, SPEC, UNIT_CD,
+                                     PO_QTY, GR_QTY, INSP_PASS_QTY, INSP_FAIL_QTY, PRC, TAX_TYP, AMT, INSP_RESULT,
+                                     LOT_NO, MFG_YMD, EXP_YMD, REMARK, REG_ID, MOD_ID)
+        VALUES (#{receiptId}, #{lineNo}, #{poItemId}, #{itemCd}, #{itemNm}, #{spec}, #{unitCd},
+                NVL(#{poQty},0), NVL(#{grQty},0), NVL(#{inspPassQty},0), NVL(#{inspFailQty},0),
+                NVL(#{prc},0), NVL(#{taxTyp},'TAX'), NVL(#{amt},0), NVL(#{inspResult},'PASS'),
+                #{lotNo}, TO_DATE(#{mfgYmd},'YYYY-MM-DD'), TO_DATE(#{expYmd},'YYYY-MM-DD'), #{remark}, 'SYSTEM', 'SYSTEM')
+    </insert>
+    <delete id="deleteItems">DELETE FROM GR_RECEIPT_ITEM WHERE RECEIPT_ID = #{receiptId}</delete>
+
+    <!-- ===== 발주(PO) 연계 ===== -->
+    <select id="findConfirmedPos" resultType="com.purchasesystem.domain.gr.GrReceipt">
+        SELECT O.ID AS PO_ID, O.PO_NO, O.VD_CD, O.VD_NM, O.OPER_ORG_CD, O.TOT_AMT
+          FROM PO_ORDER O
+         WHERE O.DEL_YN='N' AND O.STS='PC'
+           AND EXISTS (SELECT 1 FROM PO_ORDER_ITEM I WHERE I.ORDER_ID=O.ID AND I.QTY > I.GR_QTY)
+        <if test="keyword != null and keyword != ''">
+           AND (O.PO_NO LIKE '%' || #{keyword} || '%' OR O.VD_NM LIKE '%' || #{keyword} || '%')
+        </if>
+         ORDER BY O.ID DESC
+    </select>
+
+    <select id="findPoHeader" resultType="com.purchasesystem.domain.gr.GrReceipt">
+        SELECT O.ID AS PO_ID, O.PO_NO, O.VD_CD, O.VD_NM, O.OPER_ORG_CD, O.WH_CD
+          FROM PO_ORDER O WHERE O.ID = #{poId} AND O.DEL_YN='N'
+    </select>
+
+    <select id="findPoItemsForGr" resultType="com.purchasesystem.domain.gr.GrItem">
+        SELECT I.ID AS PO_ITEM_ID, I.ITEM_CD, I.ITEM_NM, I.SPEC, I.UNIT_CD,
+               I.QTY AS PO_QTY, (I.QTY - I.GR_QTY) AS REMAIN_QTY,
+               (I.QTY - I.GR_QTY) AS GR_QTY, I.PRC, I.TAX_TYP
+          FROM PO_ORDER_ITEM I
+         WHERE I.ORDER_ID = #{poId} AND (I.QTY - I.GR_QTY) > 0
+         ORDER BY I.LINE_NO
+    </select>
+
+    <update id="addPoItemGrQty">
+        UPDATE PO_ORDER_ITEM SET GR_QTY = GR_QTY + #{qty}, MOD_DT = SYSTIMESTAMP WHERE ID = #{poItemId}
+    </update>
+
+</mapper>

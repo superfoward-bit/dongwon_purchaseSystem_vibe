@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.ct.mapper.ContractMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.ct.CtContract">
+        SELECT C.ID, C.CT_NO, C.CT_REV, C.CT_TITLE, C.VD_CD, C.VD_NM,
+               TO_CHAR(C.VALID_SD,'YYYY-MM-DD') AS VALID_SD, TO_CHAR(C.VALID_ED,'YYYY-MM-DD') AS VALID_ED,
+               C.TOT_AMT, C.STS, S.CD_NM_KO AS STS_NM, C.REG_ID
+          FROM CT_CONTRACT C
+          LEFT JOIN CM_CODE S ON S.GRP_CD='CT_STS' AND S.CD=C.STS AND S.DEL_YN='N'
+         WHERE C.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">
+           AND (C.CT_NO LIKE '%'||#{keyword}||'%' OR C.CT_TITLE LIKE '%'||#{keyword}||'%' OR C.VD_NM LIKE '%'||#{keyword}||'%')
+        </if>
+        <if test="sts != null and sts != ''">AND C.STS=#{sts}</if>
+         ORDER BY C.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.ct.CtContract">
+        SELECT C.ID, C.COMP_CD, C.CT_NO, C.CT_REV, C.CT_TITLE, C.CT_TYP, C.VD_CD, C.VD_NM,
+               C.PURC_GRP_CD, C.CHRG_USR_ID, TO_CHAR(C.VALID_SD,'YYYY-MM-DD') AS VALID_SD,
+               TO_CHAR(C.VALID_ED,'YYYY-MM-DD') AS VALID_ED, C.CURR_CD, C.SUPL_AMT, C.VAT_AMT, C.TOT_AMT,
+               C.SRC_TYP, C.SRC_ID, C.STS, S.CD_NM_KO AS STS_NM, C.REMARK, C.REG_ID
+          FROM CT_CONTRACT C
+          LEFT JOIN CM_CODE S ON S.GRP_CD='CT_STS' AND S.CD=C.STS AND S.DEL_YN='N'
+         WHERE C.ID=#{id} AND C.DEL_YN='N'
+    </select>
+
+    <select id="findItems" resultType="com.purchasesystem.domain.ct.CtItem">
+        SELECT ID, CONTRACT_ID, LINE_NO, ITEM_CD, ITEM_NM, SPEC, UNIT_CD, CT_PRC,
+               TO_CHAR(APPLY_SD,'YYYY-MM-DD') AS APPLY_SD, TO_CHAR(APPLY_ED,'YYYY-MM-DD') AS APPLY_ED,
+               MIN_QTY, MAX_QTY, REMARK
+          FROM CT_CONTRACT_ITEM WHERE CONTRACT_ID=#{contractId} ORDER BY LINE_NO
+    </select>
+
+    <insert id="insertContract" parameterType="com.purchasesystem.domain.ct.CtContract"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO CT_CONTRACT (COMP_CD, CT_NO, CT_REV, CT_TITLE, CT_TYP, VD_CD, VD_NM, PURC_GRP_CD,
+                                 CHRG_USR_ID, VALID_SD, VALID_ED, CURR_CD, SUPL_AMT, VAT_AMT, TOT_AMT,
+                                 SRC_TYP, SRC_ID, STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{ctNo}, NVL(#{ctRev},0), #{ctTitle}, NVL(#{ctTyp},'PRICE'), #{vdCd}, #{vdNm}, #{purcGrpCd},
+                #{chrgUsrId}, TO_DATE(#{validSd},'YYYY-MM-DD'), TO_DATE(#{validEd},'YYYY-MM-DD'),
+                NVL(#{currCd},'KRW'), NVL(#{suplAmt},0), NVL(#{vatAmt},0), NVL(#{totAmt},0),
+                #{srcTyp}, #{srcId}, NVL(#{sts},'TMP'), #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <update id="updateContract" parameterType="com.purchasesystem.domain.ct.CtContract">
+        UPDATE CT_CONTRACT SET CT_TITLE=#{ctTitle}, VD_CD=#{vdCd}, VD_NM=#{vdNm}, PURC_GRP_CD=#{purcGrpCd},
+               VALID_SD=TO_DATE(#{validSd},'YYYY-MM-DD'), VALID_ED=TO_DATE(#{validEd},'YYYY-MM-DD'),
+               CURR_CD=#{currCd}, SUPL_AMT=#{suplAmt}, VAT_AMT=#{vatAmt}, TOT_AMT=#{totAmt}, REMARK=#{remark},
+               MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="updateStatus">UPDATE CT_CONTRACT SET STS=#{sts}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <update id="deleteContract">UPDATE CT_CONTRACT SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+
+    <insert id="insertItem" parameterType="com.purchasesystem.domain.ct.CtItem">
+        INSERT INTO CT_CONTRACT_ITEM (CONTRACT_ID, LINE_NO, ITEM_CD, ITEM_NM, SPEC, UNIT_CD, CT_PRC,
+                                      APPLY_SD, APPLY_ED, MIN_QTY, MAX_QTY, REMARK, REG_ID)
+        VALUES (#{contractId}, #{lineNo}, #{itemCd}, #{itemNm}, #{spec}, #{unitCd}, NVL(#{ctPrc},0),
+                TO_DATE(#{applySd},'YYYY-MM-DD'), TO_DATE(#{applyEd},'YYYY-MM-DD'), NVL(#{minQty},0), NVL(#{maxQty},0), #{remark}, 'SYSTEM')
+    </insert>
+    <delete id="deleteItems">DELETE FROM CT_CONTRACT_ITEM WHERE CONTRACT_ID=#{contractId}</delete>
+
+    <select id="findActivePrice" resultType="com.purchasesystem.domain.ct.CtItem">
+        SELECT * FROM (
+          SELECT I.ID, I.CONTRACT_ID, I.ITEM_CD, I.ITEM_NM, I.UNIT_CD, I.CT_PRC,
+                 TO_CHAR(I.APPLY_SD,'YYYY-MM-DD') AS APPLY_SD, TO_CHAR(I.APPLY_ED,'YYYY-MM-DD') AS APPLY_ED
+            FROM CT_CONTRACT_ITEM I
+            JOIN CT_CONTRACT C ON C.ID = I.CONTRACT_ID AND C.DEL_YN='N' AND C.STS='ACTIVE'
+           WHERE C.VD_CD = #{vdCd} AND I.ITEM_CD = #{itemCd}
+             AND TO_DATE(#{ymd},'YYYY-MM-DD') BETWEEN I.APPLY_SD AND I.APPLY_ED
+           ORDER BY I.APPLY_SD DESC
+        ) WHERE ROWNUM = 1
+    </select>
+
+</mapper>

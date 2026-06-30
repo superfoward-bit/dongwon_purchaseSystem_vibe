@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.ip.mapper.ItemPriceMapper">
+
+    <sql id="cols">
+        ID, COMP_CD, VD_CD, VD_NM, ITEM_CD, ITEM_NM, UNIT_CD, CURR_CD,
+        TO_CHAR(APPLY_SD,'YYYY-MM-DD') AS APPLY_SD, TO_CHAR(APPLY_ED,'YYYY-MM-DD') AS APPLY_ED,
+        UNIT_PRC, SRC_TYP, SRC_ID, REMARK, REG_ID, TO_CHAR(REG_DT,'YYYY-MM-DD HH24:MI') AS REG_DT
+    </sql>
+
+    <select id="findList" resultType="com.purchasesystem.domain.ip.IpPrice">
+        SELECT <include refid="cols"/> FROM IP_ITEM_PRICE
+         WHERE DEL_YN='N'
+        <if test="vdCd != null and vdCd != ''">AND VD_CD=#{vdCd}</if>
+        <if test="itemCd != null and itemCd != ''">AND ITEM_CD=#{itemCd}</if>
+        <if test="keyword != null and keyword != ''">
+           AND (ITEM_CD LIKE '%'||#{keyword}||'%' OR ITEM_NM LIKE '%'||#{keyword}||'%' OR VD_NM LIKE '%'||#{keyword}||'%')
+        </if>
+         ORDER BY VD_CD, ITEM_CD, APPLY_SD
+    </select>
+
+    <select id="findOverlapping" resultType="com.purchasesystem.domain.ip.IpPrice">
+        SELECT <include refid="cols"/> FROM IP_ITEM_PRICE
+         WHERE DEL_YN='N' AND COMP_CD=#{compCd} AND VD_CD=#{vdCd} AND ITEM_CD=#{itemCd}
+           AND APPLY_SD &lt;= TO_DATE(#{ed},'YYYY-MM-DD')
+           AND APPLY_ED &gt;= TO_DATE(#{sd},'YYYY-MM-DD')
+         ORDER BY APPLY_SD
+    </select>
+
+    <select id="findEffectivePrice" resultType="com.purchasesystem.domain.ip.IpPrice">
+        SELECT * FROM (
+          SELECT <include refid="cols"/> FROM IP_ITEM_PRICE
+           WHERE DEL_YN='N' AND VD_CD=#{vdCd} AND ITEM_CD=#{itemCd}
+             <if test="compCd != null and compCd != ''">AND COMP_CD=#{compCd}</if>
+             AND TO_DATE(#{ymd},'YYYY-MM-DD') BETWEEN APPLY_SD AND APPLY_ED
+           ORDER BY APPLY_SD DESC
+        ) WHERE ROWNUM = 1
+    </select>
+
+    <insert id="insertPrice" parameterType="com.purchasesystem.domain.ip.IpPrice"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO IP_ITEM_PRICE (COMP_CD, VD_CD, VD_NM, ITEM_CD, ITEM_NM, UNIT_CD, CURR_CD,
+               APPLY_SD, APPLY_ED, UNIT_PRC, SRC_TYP, SRC_ID, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{vdCd}, #{vdNm}, #{itemCd}, #{itemNm}, #{unitCd}, NVL(#{currCd},'KRW'),
+               TO_DATE(#{applySd},'YYYY-MM-DD'), TO_DATE(#{applyEd},'YYYY-MM-DD'), NVL(#{unitPrc},0),
+               #{srcTyp}, #{srcId}, #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <update id="updateApplyEd">
+        UPDATE IP_ITEM_PRICE SET APPLY_ED=TO_DATE(#{applyEd},'YYYY-MM-DD'), MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="updateApplySd">
+        UPDATE IP_ITEM_PRICE SET APPLY_SD=TO_DATE(#{applySd},'YYYY-MM-DD'), MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="softDelete">
+        UPDATE IP_ITEM_PRICE SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+
+    <insert id="insertHis" parameterType="com.purchasesystem.domain.ip.IpPriceHis">
+        INSERT INTO IP_PRICE_HIS (COMP_CD, VD_CD, ITEM_CD, CHG_TYP, OLD_SD, OLD_ED, OLD_PRC,
+               NEW_SD, NEW_ED, NEW_PRC, SRC_TYP, SRC_ID, REG_ID)
+        VALUES (#{compCd}, #{vdCd}, #{itemCd}, #{chgTyp}, #{oldSd}, #{oldEd}, #{oldPrc},
+               #{newSd}, #{newEd}, #{newPrc}, #{srcTyp}, #{srcId}, #{regId})
+    </insert>
+
+    <select id="findHis" resultType="com.purchasesystem.domain.ip.IpPriceHis">
+        SELECT H.ID, H.VD_CD, H.ITEM_CD, H.CHG_TYP, C.CD_NM_KO AS CHG_TYP_NM,
+               H.OLD_SD, H.OLD_ED, H.OLD_PRC, H.NEW_SD, H.NEW_ED, H.NEW_PRC,
+               H.SRC_TYP, H.SRC_ID, H.REG_ID, TO_CHAR(H.REG_DT,'YYYY-MM-DD HH24:MI') AS REG_DT
+          FROM IP_PRICE_HIS H
+          LEFT JOIN CM_CODE C ON C.GRP_CD='IP_CHG_TYP' AND C.CD=H.CHG_TYP AND C.DEL_YN='N'
+         WHERE 1=1
+        <if test="vdCd != null and vdCd != ''">AND H.VD_CD=#{vdCd}</if>
+        <if test="itemCd != null and itemCd != ''">AND H.ITEM_CD=#{itemCd}</if>
+         ORDER BY H.ID DESC
+    </select>
+
+</mapper>

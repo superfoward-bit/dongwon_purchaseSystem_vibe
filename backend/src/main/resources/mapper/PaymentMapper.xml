@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.payment.mapper.PaymentMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.payment.PyPayment">
+        SELECT P.ID, P.PAY_NO, P.SRC_NO, P.VD_CD, P.VD_NM,
+               TO_CHAR(P.PAY_DUE_YMD,'YYYY-MM-DD') AS PAY_DUE_YMD, P.PAY_AMT,
+               P.PAY_METHOD_CD, M.CD_NM_KO AS PAY_METHOD_NM,
+               TO_CHAR(P.PAY_YMD,'YYYY-MM-DD') AS PAY_YMD, P.PAY_STS, S.CD_NM_KO AS PAY_STS_NM, P.REG_ID
+          FROM PY_PAYMENT P
+          LEFT JOIN CM_CODE M ON M.GRP_CD='PAY_METHOD' AND M.CD=P.PAY_METHOD_CD AND M.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='PY_STS' AND S.CD=P.PAY_STS AND S.DEL_YN='N'
+         WHERE P.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">AND (P.PAY_NO LIKE '%'||#{keyword}||'%' OR P.VD_NM LIKE '%'||#{keyword}||'%' OR P.SRC_NO LIKE '%'||#{keyword}||'%')</if>
+        <if test="paySts != null and paySts != ''">AND P.PAY_STS=#{paySts}</if>
+         ORDER BY P.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.payment.PyPayment">
+        SELECT P.ID, P.COMP_CD, P.PAY_NO, P.SRC_TYP, P.SRC_ID, P.SRC_NO, P.VD_CD, P.VD_NM,
+               TO_CHAR(P.PAY_DUE_YMD,'YYYY-MM-DD') AS PAY_DUE_YMD, P.PAY_AMT,
+               P.PAY_METHOD_CD, M.CD_NM_KO AS PAY_METHOD_NM, P.BANK_CD, P.BANK_NM, P.ACCT_NO, P.ACCT_HOLDER,
+               P.NOTE_NO, TO_CHAR(P.NOTE_DUE_YMD,'YYYY-MM-DD') AS NOTE_DUE_YMD,
+               TO_CHAR(P.PAY_YMD,'YYYY-MM-DD') AS PAY_YMD, P.PAY_STS, S.CD_NM_KO AS PAY_STS_NM, P.REMARK, P.REG_ID
+          FROM PY_PAYMENT P
+          LEFT JOIN CM_CODE M ON M.GRP_CD='PAY_METHOD' AND M.CD=P.PAY_METHOD_CD AND M.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='PY_STS' AND S.CD=P.PAY_STS AND S.DEL_YN='N'
+         WHERE P.ID=#{id} AND P.DEL_YN='N'
+    </select>
+
+    <insert id="insert" parameterType="com.purchasesystem.domain.payment.PyPayment"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO PY_PAYMENT (COMP_CD, PAY_NO, SRC_TYP, SRC_ID, SRC_NO, VD_CD, VD_NM, PAY_DUE_YMD, PAY_AMT,
+               PAY_METHOD_CD, BANK_CD, BANK_NM, ACCT_NO, ACCT_HOLDER, PAY_STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{payNo}, #{srcTyp}, #{srcId}, #{srcNo}, #{vdCd}, #{vdNm},
+               TO_DATE(#{payDueYmd},'YYYY-MM-DD'), NVL(#{payAmt},0),
+               #{payMethodCd}, #{bankCd}, #{bankNm}, #{acctNo}, #{acctHolder}, 'PLAN', #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <update id="updatePaid">
+        UPDATE PY_PAYMENT SET PAY_STS='PAID', PAY_YMD=TO_DATE(#{payYmd},'YYYY-MM-DD'),
+               NOTE_NO=#{noteNo}, NOTE_DUE_YMD=TO_DATE(#{noteDueYmd},'YYYY-MM-DD'),
+               MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="updateStatus">UPDATE PY_PAYMENT SET PAY_STS=#{paySts}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <select id="countBySrc" resultType="int">SELECT COUNT(*) FROM PY_PAYMENT WHERE SRC_TYP=#{srcTyp} AND SRC_ID=#{srcId} AND DEL_YN='N' AND PAY_STS&lt;&gt;'CANCEL'</select>
+
+</mapper>

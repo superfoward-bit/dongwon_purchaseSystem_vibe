@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.stock.mapper.CountMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.stock.StCount">
+        SELECT C.ID, C.COUNT_NO, C.WH_CD, W.CD_NM_KO AS WH_NM, TO_CHAR(C.COUNT_YMD,'YYYY-MM-DD') AS COUNT_YMD,
+               C.STS, S.CD_NM_KO AS STS_NM, C.REG_ID
+          FROM ST_COUNT C
+          LEFT JOIN CM_CODE W ON W.GRP_CD='WH' AND W.CD=C.WH_CD AND W.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='INV_STS' AND S.CD=C.STS AND S.DEL_YN='N'
+         WHERE C.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">AND C.COUNT_NO LIKE '%'||#{keyword}||'%'</if>
+        <if test="sts != null and sts != ''">AND C.STS=#{sts}</if>
+         ORDER BY C.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.stock.StCount">
+        SELECT C.ID, C.COMP_CD, C.COUNT_NO, C.WH_CD, W.CD_NM_KO AS WH_NM, TO_CHAR(C.COUNT_YMD,'YYYY-MM-DD') AS COUNT_YMD,
+               C.STS, S.CD_NM_KO AS STS_NM, C.REMARK, C.REG_ID
+          FROM ST_COUNT C
+          LEFT JOIN CM_CODE W ON W.GRP_CD='WH' AND W.CD=C.WH_CD AND W.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='INV_STS' AND S.CD=C.STS AND S.DEL_YN='N'
+         WHERE C.ID=#{id} AND C.DEL_YN='N'
+    </select>
+
+    <select id="findItems" resultType="com.purchasesystem.domain.stock.StCountItem">
+        SELECT ID, COUNT_ID, LINE_NO, ITEM_CD, ITEM_NM, LOT_NO, UNIT_CD, BOOK_QTY, REAL_QTY, DIFF_QTY, REMARK
+          FROM ST_COUNT_ITEM WHERE COUNT_ID=#{countId} ORDER BY LINE_NO
+    </select>
+
+    <insert id="insert" parameterType="com.purchasesystem.domain.stock.StCount"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO ST_COUNT (COMP_CD, COUNT_NO, WH_CD, COUNT_YMD, STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{countNo}, #{whCd}, TO_DATE(#{countYmd},'YYYY-MM-DD'), 'TMP', #{remark}, #{regId}, #{regId})
+    </insert>
+    <update id="updateHeader" parameterType="com.purchasesystem.domain.stock.StCount">
+        UPDATE ST_COUNT SET WH_CD=#{whCd}, COUNT_YMD=TO_DATE(#{countYmd},'YYYY-MM-DD'), REMARK=#{remark},
+               MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="updateStatus">UPDATE ST_COUNT SET STS=#{sts}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <delete id="deleteItems">DELETE FROM ST_COUNT_ITEM WHERE COUNT_ID=#{countId}</delete>
+    <insert id="insertItem" parameterType="com.purchasesystem.domain.stock.StCountItem">
+        INSERT INTO ST_COUNT_ITEM (COUNT_ID, LINE_NO, ITEM_CD, ITEM_NM, LOT_NO, UNIT_CD, BOOK_QTY, REAL_QTY, DIFF_QTY, REMARK, REG_ID)
+        VALUES (#{countId}, #{lineNo}, #{itemCd}, #{itemNm}, #{lotNo}, #{unitCd}, NVL(#{bookQty},0), NVL(#{realQty},0), NVL(#{diffQty},0), #{remark}, 'SYSTEM')
+    </insert>
+
+</mapper>

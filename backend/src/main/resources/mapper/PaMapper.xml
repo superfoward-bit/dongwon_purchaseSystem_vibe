@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.pa.mapper.PaMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.pa.PaAdjust">
+        SELECT A.ID, A.ADJ_NO, A.ADJ_TYP, T.CD_NM_KO AS ADJ_TYP_NM, A.VD_CD, A.VD_NM, A.GR_NO, A.ADJ_YM,
+               A.SUPL_ADJ_AMT, A.VAT_ADJ_AMT, A.TOT_ADJ_AMT, A.STS, S.CD_NM_KO AS STS_NM, A.REG_ID
+          FROM PA_ADJUST A
+          LEFT JOIN CM_CODE T ON T.GRP_CD='PA_ADJ_TYP' AND T.CD=A.ADJ_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='PA_STS' AND S.CD=A.STS AND S.DEL_YN='N'
+         WHERE A.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">
+           AND (A.ADJ_NO LIKE '%'||#{keyword}||'%' OR A.VD_NM LIKE '%'||#{keyword}||'%' OR A.GR_NO LIKE '%'||#{keyword}||'%')
+        </if>
+        <if test="sts != null and sts != ''">AND A.STS=#{sts}</if>
+        <if test="vdCd != null and vdCd != ''">AND A.VD_CD=#{vdCd}</if>
+         ORDER BY A.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.pa.PaAdjust">
+        SELECT A.ID, A.COMP_CD, A.ADJ_NO, A.ADJ_TYP, T.CD_NM_KO AS ADJ_TYP_NM, A.VD_CD, A.VD_NM,
+               A.GR_ID, A.GR_NO, A.ADJ_YM, A.TAX_TYP, A.SUPL_ADJ_AMT, A.VAT_ADJ_AMT, A.TOT_ADJ_AMT, A.REASON,
+               A.STS, S.CD_NM_KO AS STS_NM, A.REMARK, A.REG_ID
+          FROM PA_ADJUST A
+          LEFT JOIN CM_CODE T ON T.GRP_CD='PA_ADJ_TYP' AND T.CD=A.ADJ_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='PA_STS' AND S.CD=A.STS AND S.DEL_YN='N'
+         WHERE A.ID=#{id} AND A.DEL_YN='N'
+    </select>
+
+    <insert id="insert" parameterType="com.purchasesystem.domain.pa.PaAdjust"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO PA_ADJUST (COMP_CD, ADJ_NO, ADJ_TYP, VD_CD, VD_NM, GR_ID, GR_NO, ADJ_YM, TAX_TYP,
+               SUPL_ADJ_AMT, VAT_ADJ_AMT, TOT_ADJ_AMT, REASON, STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{adjNo}, NVL(#{adjTyp},'PRICE'), #{vdCd}, #{vdNm}, #{grId}, #{grNo}, #{adjYm}, NVL(#{taxTyp},'TAX'),
+               NVL(#{suplAdjAmt},0), NVL(#{vatAdjAmt},0), NVL(#{totAdjAmt},0), #{reason}, NVL(#{sts},'TMP'), #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <update id="update" parameterType="com.purchasesystem.domain.pa.PaAdjust">
+        UPDATE PA_ADJUST SET ADJ_TYP=#{adjTyp}, VD_CD=#{vdCd}, VD_NM=#{vdNm}, GR_ID=#{grId}, GR_NO=#{grNo}, ADJ_YM=#{adjYm}, TAX_TYP=NVL(#{taxTyp},'TAX'),
+               SUPL_ADJ_AMT=#{suplAdjAmt}, VAT_ADJ_AMT=#{vatAdjAmt}, TOT_ADJ_AMT=#{totAdjAmt}, REASON=#{reason},
+               REMARK=#{remark}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="updateStatus">UPDATE PA_ADJUST SET STS=#{sts}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <update id="delete">UPDATE PA_ADJUST SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+
+    <select id="sumConfirmed" resultType="java.math.BigDecimal">
+        SELECT NVL(SUM(TOT_ADJ_AMT),0) FROM PA_ADJUST
+         WHERE DEL_YN='N' AND STS='CFM' AND COMP_CD=#{compCd} AND VD_CD=#{vdCd} AND ADJ_YM=#{adjYm}
+    </select>
+
+</mapper>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.claim.mapper.ClaimMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.claim.CmClaim">
+        SELECT C.ID, C.CLM_NO, C.VD_CD, C.VD_NM, C.CLM_TYP, T.CD_NM_KO AS CLM_TYP_NM, C.ITEM_NM,
+               TO_CHAR(C.CLM_YMD,'YYYY-MM-DD') AS CLM_YMD, C.CLM_AMT, C.STS, S.CD_NM_KO AS STS_NM, C.REG_ID
+          FROM CM_CLAIM C
+          LEFT JOIN CM_CODE T ON T.GRP_CD='CLM_TYP' AND T.CD=C.CLM_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='CLM_STS' AND S.CD=C.STS AND S.DEL_YN='N'
+         WHERE C.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">
+           AND (C.CLM_NO LIKE '%'||#{keyword}||'%' OR C.VD_NM LIKE '%'||#{keyword}||'%' OR C.ITEM_NM LIKE '%'||#{keyword}||'%')
+        </if>
+        <if test="sts != null and sts != ''">AND C.STS=#{sts}</if>
+        <if test="vdCd != null and vdCd != ''">AND C.VD_CD=#{vdCd}</if>
+         ORDER BY C.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.claim.CmClaim">
+        SELECT C.ID, C.COMP_CD, C.CLM_NO, C.VD_CD, C.VD_NM, C.CLM_TYP, T.CD_NM_KO AS CLM_TYP_NM, C.SRC_TYP, C.REF_NO,
+               C.ITEM_CD, C.ITEM_NM, TO_CHAR(C.CLM_YMD,'YYYY-MM-DD') AS CLM_YMD, C.LOT_NO,
+               TO_CHAR(C.MFG_YMD,'YYYY-MM-DD') AS MFG_YMD, C.COMP_TYP, CP.CD_NM_KO AS COMP_TYP_NM,
+               C.CLAIM_QTY, C.CLM_AMT, C.RECOVER_AMT, C.CLM_DESC,
+               TO_CHAR(C.DUE_YMD,'YYYY-MM-DD') AS DUE_YMD, C.RESOLVE_DESC,
+               C.STS, S.CD_NM_KO AS STS_NM, C.REMARK, C.REG_ID
+          FROM CM_CLAIM C
+          LEFT JOIN CM_CODE T ON T.GRP_CD='CLM_TYP' AND T.CD=C.CLM_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='CLM_STS' AND S.CD=C.STS AND S.DEL_YN='N'
+          LEFT JOIN CM_CODE CP ON CP.GRP_CD='CLM_COMP' AND CP.CD=C.COMP_TYP AND CP.DEL_YN='N'
+         WHERE C.ID=#{id} AND C.DEL_YN='N'
+    </select>
+
+    <insert id="insert" parameterType="com.purchasesystem.domain.claim.CmClaim"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO CM_CLAIM (COMP_CD, CLM_NO, VD_CD, VD_NM, CLM_TYP, SRC_TYP, REF_NO, ITEM_CD, ITEM_NM,
+               CLM_YMD, LOT_NO, MFG_YMD, COMP_TYP, CLAIM_QTY, CLM_AMT, RECOVER_AMT, CLM_DESC, DUE_YMD, RESOLVE_DESC, STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{clmNo}, #{vdCd}, #{vdNm}, NVL(#{clmTyp},'QUALITY'), #{srcTyp}, #{refNo}, #{itemCd}, #{itemNm},
+               TO_DATE(#{clmYmd},'YYYY-MM-DD'), #{lotNo}, TO_DATE(#{mfgYmd},'YYYY-MM-DD'), #{compTyp}, NVL(#{claimQty},0), NVL(#{clmAmt},0), NVL(#{recoverAmt},0),
+               #{clmDesc}, TO_DATE(#{dueYmd},'YYYY-MM-DD'), #{resolveDesc}, NVL(#{sts},'OPEN'), #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <update id="update" parameterType="com.purchasesystem.domain.claim.CmClaim">
+        UPDATE CM_CLAIM SET VD_CD=#{vdCd}, VD_NM=#{vdNm}, CLM_TYP=#{clmTyp}, SRC_TYP=#{srcTyp}, REF_NO=#{refNo},
+               ITEM_CD=#{itemCd}, ITEM_NM=#{itemNm}, CLM_YMD=TO_DATE(#{clmYmd},'YYYY-MM-DD'),
+               LOT_NO=#{lotNo}, MFG_YMD=TO_DATE(#{mfgYmd},'YYYY-MM-DD'), COMP_TYP=#{compTyp},
+               CLAIM_QTY=NVL(#{claimQty},0), CLM_AMT=NVL(#{clmAmt},0), RECOVER_AMT=NVL(#{recoverAmt},0),
+               CLM_DESC=#{clmDesc}, DUE_YMD=TO_DATE(#{dueYmd},'YYYY-MM-DD'), RESOLVE_DESC=#{resolveDesc},
+               REMARK=#{remark}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="updateStatus">UPDATE CM_CLAIM SET STS=#{sts}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <update id="delete">UPDATE CM_CLAIM SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+
+</mapper>

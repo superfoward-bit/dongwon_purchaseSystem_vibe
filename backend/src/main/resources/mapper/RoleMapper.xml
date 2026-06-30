@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.role.mapper.RoleMapper">
+
+    <select id="findRoles" resultType="com.purchasesystem.domain.role.CmRole">
+        SELECT ID, ROLE_ID, ROLE_NM, DESCRIPTION, USE_YN
+          FROM CM_ROLE
+         WHERE DEL_YN = 'N'
+        <if test="keyword != null and keyword != ''">
+           AND (ROLE_ID LIKE '%' || #{keyword} || '%' OR ROLE_NM LIKE '%' || #{keyword} || '%')
+        </if>
+         ORDER BY ROLE_ID
+    </select>
+
+    <select id="countByRoleId" resultType="int">
+        SELECT COUNT(*) FROM CM_ROLE WHERE ROLE_ID = #{roleId} AND DEL_YN = 'N'
+    </select>
+
+    <insert id="insertRole" parameterType="com.purchasesystem.domain.role.CmRole">
+        INSERT INTO CM_ROLE (ROLE_ID, ROLE_NM, DESCRIPTION, USE_YN, REG_ID, MOD_ID)
+        VALUES (#{roleId}, #{roleNm}, #{description}, NVL(#{useYn}, 'Y'), #{regId}, #{regId})
+    </insert>
+
+    <update id="updateRole" parameterType="com.purchasesystem.domain.role.CmRole">
+        UPDATE CM_ROLE
+           SET ROLE_NM = #{roleNm}, DESCRIPTION = #{description}, USE_YN = #{useYn},
+               MOD_ID = #{modId}, MOD_DT = SYSTIMESTAMP
+         WHERE ID = #{id}
+    </update>
+
+    <update id="deleteRole">
+        UPDATE CM_ROLE SET DEL_YN = 'Y', MOD_ID = #{modId}, MOD_DT = SYSTIMESTAMP
+         WHERE ID = #{id}
+    </update>
+
+    <select id="findRoleFuncs" resultType="com.purchasesystem.domain.role.CmRoleFunc">
+        SELECT ROLE_ID, MENU_ID, AUTH_CD FROM CM_ROLE_FUNC WHERE ROLE_ID = #{roleId}
+    </select>
+
+    <delete id="deleteRoleFuncs">
+        DELETE FROM CM_ROLE_FUNC WHERE ROLE_ID = #{roleId}
+    </delete>
+
+    <insert id="insertRoleFunc" parameterType="com.purchasesystem.domain.role.CmRoleFunc">
+        INSERT INTO CM_ROLE_FUNC (ROLE_ID, MENU_ID, AUTH_CD, REG_ID)
+        VALUES (#{roleId}, #{menuId}, #{authCd}, 'SYSTEM')
+    </insert>
+
+</mapper>

@@ -1,0 +1,34 @@
+-- =============================================================
+-- 구매시스템 DDL - 75. (3d) CAPA 효과검증 + 클레임 보상/회수
+-- =============================================================
+
+INSERT INTO CM_CODE_GRP (GRP_CD, GRP_NM, REG_ID) VALUES ('CLM_COMP', '클레임보상방식', 'SYSTEM');
+INSERT INTO CM_CODE (GRP_CD, CD, CD_NM_KO, SORT_NO, REG_ID) VALUES ('CLM_COMP', 'REFUND',   '환불',   1, 'SYSTEM');
+INSERT INTO CM_CODE (GRP_CD, CD, CD_NM_KO, SORT_NO, REG_ID) VALUES ('CLM_COMP', 'EXCHANGE', '교환',   2, 'SYSTEM');
+INSERT INTO CM_CODE (GRP_CD, CD, CD_NM_KO, SORT_NO, REG_ID) VALUES ('CLM_COMP', 'DISCOUNT', '감액',   3, 'SYSTEM');
+INSERT INTO CM_CODE (GRP_CD, CD, CD_NM_KO, SORT_NO, REG_ID) VALUES ('CLM_COMP', 'CASH',     '현금배상', 4, 'SYSTEM');
+
+INSERT INTO CM_CODE_GRP (GRP_CD, GRP_NM, REG_ID) VALUES ('QC_EFFECT', 'CAPA검증결과', 'SYSTEM');
+INSERT INTO CM_CODE (GRP_CD, CD, CD_NM_KO, SORT_NO, REG_ID) VALUES ('QC_EFFECT', 'PASS', '유효(적합)',   1, 'SYSTEM');
+INSERT INTO CM_CODE (GRP_CD, CD, CD_NM_KO, SORT_NO, REG_ID) VALUES ('QC_EFFECT', 'FAIL', '미흡(부적합)', 2, 'SYSTEM');
+
+-- CAPA 개선조치: 효과검증
+ALTER TABLE QC_ACTION ADD (
+  VERIFY_USR    VARCHAR2(50 CHAR),    -- 효과검증자
+  VERIFY_YMD    DATE,                 -- 검증일
+  EFFECT_RESULT VARCHAR2(18 CHAR),    -- 검증결과(PASS/FAIL)
+  RECUR_PREVENT VARCHAR2(1000 CHAR)   -- 재발방지대책(수평전개)
+);
+COMMENT ON COLUMN QC_ACTION.EFFECT_RESULT IS 'CAPA 효과검증결과';
+
+-- 클레임: 보상방식 + 청구/실회수 분리
+ALTER TABLE CM_CLAIM ADD (
+  COMP_TYP    VARCHAR2(18 CHAR),       -- 보상방식
+  CLAIM_QTY   NUMBER(20,5) DEFAULT 0,  -- 클레임 수량
+  RECOVER_AMT NUMBER(20,5) DEFAULT 0   -- 실회수(보상)금액
+);
+COMMENT ON COLUMN CM_CLAIM.COMP_TYP IS '보상방식';
+COMMENT ON COLUMN CM_CLAIM.CLAIM_AMT IS '청구(손해)액';
+COMMENT ON COLUMN CM_CLAIM.RECOVER_AMT IS '실회수(보상)금액';
+
+COMMIT;

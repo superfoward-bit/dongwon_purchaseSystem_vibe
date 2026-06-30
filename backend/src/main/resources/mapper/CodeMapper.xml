@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.code.mapper.CodeMapper">
+
+    <select id="findGroups" resultType="com.purchasesystem.domain.code.CmCodeGrp">
+        SELECT ID, COMP_CD, GRP_CD, GRP_NM, DESCRIPTION, USE_YN
+          FROM CM_CODE_GRP
+         WHERE DEL_YN = 'N'
+        <if test="keyword != null and keyword != ''">
+           AND (GRP_CD LIKE '%' || #{keyword} || '%' OR GRP_NM LIKE '%' || #{keyword} || '%')
+        </if>
+         ORDER BY GRP_CD
+    </select>
+
+    <select id="findCodes" resultType="com.purchasesystem.domain.code.CmCode">
+        SELECT ID, COMP_CD, GRP_CD, CD, CD_NM_KO, CD_NM_EN, SORT_NO,
+               ATTR1, ATTR2, ATTR3, ATTR4, USE_YN
+          FROM CM_CODE
+         WHERE DEL_YN = 'N'
+           AND GRP_CD = #{grpCd}
+         ORDER BY SORT_NO, CD
+    </select>
+
+    <select id="countCode" resultType="int">
+        SELECT COUNT(*) FROM CM_CODE
+         WHERE DEL_YN = 'N' AND GRP_CD = #{grpCd} AND CD = #{cd}
+    </select>
+
+    <insert id="insertCode" parameterType="com.purchasesystem.domain.code.CmCode">
+        INSERT INTO CM_CODE (COMP_CD, GRP_CD, CD, CD_NM_KO, CD_NM_EN, SORT_NO,
+                             ATTR1, ATTR2, ATTR3, ATTR4, USE_YN, REG_ID, MOD_ID)
+        VALUES (NVL(#{compCd}, '*'), #{grpCd}, #{cd}, #{cdNmKo}, #{cdNmEn}, NVL(#{sortNo}, 1),
+                #{attr1}, #{attr2}, #{attr3}, #{attr4}, NVL(#{useYn}, 'Y'), #{regId}, #{regId})
+    </insert>
+
+    <update id="updateCode" parameterType="com.purchasesystem.domain.code.CmCode">
+        UPDATE CM_CODE
+           SET CD_NM_KO = #{cdNmKo},
+               CD_NM_EN = #{cdNmEn},
+               SORT_NO  = #{sortNo},
+               ATTR1 = #{attr1}, ATTR2 = #{attr2}, ATTR3 = #{attr3}, ATTR4 = #{attr4},
+               USE_YN   = #{useYn},
+               MOD_ID   = #{modId},
+               MOD_DT   = SYSTIMESTAMP
+         WHERE ID = #{id}
+    </update>
+
+    <update id="deleteCode">
+        UPDATE CM_CODE
+           SET DEL_YN = 'Y', MOD_ID = #{modId}, MOD_DT = SYSTIMESTAMP
+         WHERE ID = #{id}
+    </update>
+
+</mapper>

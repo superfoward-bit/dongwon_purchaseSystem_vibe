@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.qc.mapper.QcMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.qc.QcNonconf">
+        SELECT N.ID, N.NC_NO, N.VD_CD, N.VD_NM, N.REF_NO, N.ITEM_NM,
+               N.NC_TYP, T.CD_NM_KO AS NC_TYP_NM, N.SEVERITY, SV.CD_NM_KO AS SEVERITY_NM,
+               TO_CHAR(N.DETECT_YMD,'YYYY-MM-DD') AS DETECT_YMD, N.STS, S.CD_NM_KO AS STS_NM, N.REG_ID
+          FROM QC_NONCONF N
+          LEFT JOIN CM_CODE T ON T.GRP_CD='QC_NC_TYP' AND T.CD=N.NC_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE SV ON SV.GRP_CD='QC_SEVERITY' AND SV.CD=N.SEVERITY AND SV.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='QC_STS' AND S.CD=N.STS AND S.DEL_YN='N'
+         WHERE N.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">
+           AND (N.NC_NO LIKE '%'||#{keyword}||'%' OR N.VD_NM LIKE '%'||#{keyword}||'%' OR N.ITEM_NM LIKE '%'||#{keyword}||'%')
+        </if>
+        <if test="sts != null and sts != ''">AND N.STS=#{sts}</if>
+        <if test="vdCd != null and vdCd != ''">AND N.VD_CD=#{vdCd}</if>
+         ORDER BY N.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.qc.QcNonconf">
+        SELECT N.ID, N.COMP_CD, N.NC_NO, N.VD_CD, N.VD_NM, N.SRC_TYP, N.SRC_ID, N.REF_NO, N.ITEM_CD, N.ITEM_NM,
+               N.NC_TYP, T.CD_NM_KO AS NC_TYP_NM, N.SEVERITY, SV.CD_NM_KO AS SEVERITY_NM,
+               TO_CHAR(N.DETECT_YMD,'YYYY-MM-DD') AS DETECT_YMD, N.LOT_NO,
+               TO_CHAR(N.MFG_YMD,'YYYY-MM-DD') AS MFG_YMD, TO_CHAR(N.EXP_YMD,'YYYY-MM-DD') AS EXP_YMD,
+               N.NC_QTY, N.NC_DESC, N.STS, S.CD_NM_KO AS STS_NM, N.REMARK, N.REG_ID
+          FROM QC_NONCONF N
+          LEFT JOIN CM_CODE T ON T.GRP_CD='QC_NC_TYP' AND T.CD=N.NC_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE SV ON SV.GRP_CD='QC_SEVERITY' AND SV.CD=N.SEVERITY AND SV.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='QC_STS' AND S.CD=N.STS AND S.DEL_YN='N'
+         WHERE N.ID=#{id} AND N.DEL_YN='N'
+    </select>
+
+    <insert id="insert" parameterType="com.purchasesystem.domain.qc.QcNonconf"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO QC_NONCONF (COMP_CD, NC_NO, VD_CD, VD_NM, SRC_TYP, SRC_ID, REF_NO, ITEM_CD, ITEM_NM,
+               NC_TYP, SEVERITY, DETECT_YMD, LOT_NO, MFG_YMD, EXP_YMD, NC_QTY, NC_DESC, STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{ncNo}, #{vdCd}, #{vdNm}, #{srcTyp}, #{srcId}, #{refNo}, #{itemCd}, #{itemNm},
+               NVL(#{ncTyp},'QUALITY'), NVL(#{severity},'MAJOR'), TO_DATE(#{detectYmd},'YYYY-MM-DD'),
+               #{lotNo}, TO_DATE(#{mfgYmd},'YYYY-MM-DD'), TO_DATE(#{expYmd},'YYYY-MM-DD'),
+               NVL(#{ncQty},0), #{ncDesc}, NVL(#{sts},'OPEN'), #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <update id="update" parameterType="com.purchasesystem.domain.qc.QcNonconf">
+        UPDATE QC_NONCONF SET VD_CD=#{vdCd}, VD_NM=#{vdNm}, REF_NO=#{refNo}, ITEM_CD=#{itemCd}, ITEM_NM=#{itemNm},
+               NC_TYP=#{ncTyp}, SEVERITY=#{severity}, DETECT_YMD=TO_DATE(#{detectYmd},'YYYY-MM-DD'),
+               LOT_NO=#{lotNo}, MFG_YMD=TO_DATE(#{mfgYmd},'YYYY-MM-DD'), EXP_YMD=TO_DATE(#{expYmd},'YYYY-MM-DD'),
+               NC_QTY=NVL(#{ncQty},0), NC_DESC=#{ncDesc}, REMARK=#{remark}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP
+         WHERE ID=#{id}
+    </update>
+    <update id="updateStatus">UPDATE QC_NONCONF SET STS=#{sts}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <update id="delete">UPDATE QC_NONCONF SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+
+    <select id="findActions" resultType="com.purchasesystem.domain.qc.QcAction">
+        SELECT A.ID, A.NC_ID, A.LINE_NO, A.ACTION_TYP, T.CD_NM_KO AS ACTION_TYP_NM, A.ROOT_CAUSE, A.ACTION_DESC,
+               A.RESP_NM, TO_CHAR(A.DUE_YMD,'YYYY-MM-DD') AS DUE_YMD, TO_CHAR(A.COMPLETE_YMD,'YYYY-MM-DD') AS COMPLETE_YMD,
+               A.RESULT_STS, R.CD_NM_KO AS RESULT_STS_NM,
+               A.VERIFY_USR, TO_CHAR(A.VERIFY_YMD,'YYYY-MM-DD') AS VERIFY_YMD,
+               A.EFFECT_RESULT, EF.CD_NM_KO AS EFFECT_RESULT_NM, A.RECUR_PREVENT, A.REMARK
+          FROM QC_ACTION A
+          LEFT JOIN CM_CODE T ON T.GRP_CD='QC_ACTION_TYP' AND T.CD=A.ACTION_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE R ON R.GRP_CD='QC_RESULT_STS' AND R.CD=A.RESULT_STS AND R.DEL_YN='N'
+          LEFT JOIN CM_CODE EF ON EF.GRP_CD='QC_EFFECT' AND EF.CD=A.EFFECT_RESULT AND EF.DEL_YN='N'
+         WHERE A.NC_ID=#{ncId} ORDER BY A.LINE_NO
+    </select>
+    <insert id="insertAction" parameterType="com.purchasesystem.domain.qc.QcAction">
+        INSERT INTO QC_ACTION (NC_ID, LINE_NO, ACTION_TYP, ROOT_CAUSE, ACTION_DESC, RESP_NM, DUE_YMD, COMPLETE_YMD, RESULT_STS,
+               VERIFY_USR, VERIFY_YMD, EFFECT_RESULT, RECUR_PREVENT, REMARK, REG_ID)
+        VALUES (#{ncId}, #{lineNo}, NVL(#{actionTyp},'CORRECT'), #{rootCause}, #{actionDesc}, #{respNm},
+               TO_DATE(#{dueYmd},'YYYY-MM-DD'), TO_DATE(#{completeYmd},'YYYY-MM-DD'), NVL(#{resultSts},'PLAN'),
+               #{verifyUsr}, TO_DATE(#{verifyYmd},'YYYY-MM-DD'), #{effectResult}, #{recurPrevent}, #{remark}, 'SYSTEM')
+    </insert>
+    <delete id="deleteActions">DELETE FROM QC_ACTION WHERE NC_ID=#{ncId}</delete>
+
+</mapper>

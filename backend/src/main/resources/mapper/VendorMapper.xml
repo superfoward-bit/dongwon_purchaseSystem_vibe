@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.vendor.mapper.VendorMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.vendor.VdVendor">
+        SELECT V.ID, V.COMP_CD, V.VD_CD, V.VD_NM, V.BIZ_NO, V.CEO_NM, V.VD_TYP,
+               T.CD_NM_KO AS VD_TYP_NM, V.TEL, V.EMAIL, V.VD_STS, S.CD_NM_KO AS VD_STS_NM,
+               V.REG_STS, RS.CD_NM_KO AS REG_STS_NM,
+               V.GRADE_CD, V.GRADE_NM, TO_CHAR(V.LAST_EVAL_YMD,'YYYY-MM-DD') AS LAST_EVAL_YMD,
+               V.USE_YN, V.REG_ID
+          FROM VD_VENDOR V
+          LEFT JOIN CM_CODE T ON T.GRP_CD = 'VD_TYP' AND T.CD = V.VD_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD = 'VD_STS' AND S.CD = V.VD_STS AND S.DEL_YN='N'
+          LEFT JOIN CM_CODE RS ON RS.GRP_CD = 'VD_REG_STS' AND RS.CD = V.REG_STS AND RS.DEL_YN='N'
+         WHERE V.DEL_YN = 'N'
+        <if test="keyword != null and keyword != ''">
+           AND (V.VD_CD LIKE '%' || #{keyword} || '%' OR V.VD_NM LIKE '%' || #{keyword} || '%'
+                OR V.BIZ_NO LIKE '%' || #{keyword} || '%')
+        </if>
+        <if test="vdSts != null and vdSts != ''">AND V.VD_STS = #{vdSts}</if>
+         ORDER BY V.VD_CD
+    </select>
+
+    <select id="findRegList" resultType="com.purchasesystem.domain.vendor.VdVendor">
+        SELECT V.ID, V.VD_CD, V.VD_NM, V.BIZ_NO, V.CEO_NM, V.VD_TYP, T.CD_NM_KO AS VD_TYP_NM,
+               V.IND_SECT_CD, ISC.CD_NM_KO AS IND_SECT_NM, V.PURC_CHRG_NM,
+               V.VD_STS, S.CD_NM_KO AS VD_STS_NM, V.REG_STS, RS.CD_NM_KO AS REG_STS_NM, V.REG_ID
+          FROM VD_VENDOR V
+          LEFT JOIN CM_CODE T ON T.GRP_CD = 'VD_TYP' AND T.CD = V.VD_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE ISC ON ISC.GRP_CD = 'IND_SECT' AND ISC.CD = V.IND_SECT_CD AND ISC.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD = 'VD_STS' AND S.CD = V.VD_STS AND S.DEL_YN='N'
+          LEFT JOIN CM_CODE RS ON RS.GRP_CD = 'VD_REG_STS' AND RS.CD = V.REG_STS AND RS.DEL_YN='N'
+         WHERE V.DEL_YN = 'N'
+        <if test="keyword != null and keyword != ''">
+           AND (V.VD_CD LIKE '%' || #{keyword} || '%' OR V.VD_NM LIKE '%' || #{keyword} || '%' OR V.BIZ_NO LIKE '%' || #{keyword} || '%')
+        </if>
+        <if test="regSts != null and regSts != ''">AND V.REG_STS = #{regSts}</if>
+         ORDER BY V.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.vendor.VdVendor">
+        SELECT V.ID, V.COMP_CD, V.VD_CD, V.ERP_VD_CD, V.VD_NM, V.VD_NM_EN, V.BIZ_NO, V.CORP_NO,
+               V.CEO_NM, V.VD_TYP, T.CD_NM_KO AS VD_TYP_NM, V.BIZ_COND, V.BIZ_ITEM, V.ADDR, V.TEL, V.FAX, V.EMAIL,
+               V.PAY_COND, V.PAY_TERM_CD, PT.CD_NM_KO AS PAY_TERM_NM, V.PAY_METHOD_CD, PM.CD_NM_KO AS PAY_METHOD_NM,
+               V.VD_STS, S.CD_NM_KO AS VD_STS_NM, V.GRADE_CD, V.GRADE_NM,
+               TO_CHAR(V.LAST_EVAL_YMD,'YYYY-MM-DD') AS LAST_EVAL_YMD,
+               V.ZIP_CD, V.ADDR_EN, V.MOBILE, V.HOMEPAGE,
+               V.IND_SECT_CD, ISC.CD_NM_KO AS IND_SECT_NM, V.TRAD_FORM_CD, TF.CD_NM_KO AS TRAD_FORM_NM,
+               V.VD_SIZE_CD, VS.CD_NM_KO AS VD_SIZE_NM, V.LISTED_YN, TO_CHAR(V.FND_DATE,'YYYY-MM-DD') AS FND_DATE,
+               V.CURR_CD, V.BANK_CD, V.BANK_NM, V.ACCT_NO, V.ACCT_HOLDER,
+               V.CREDIT_LIMIT, V.TAX_BILL_TYP, TB.CD_NM_KO AS TAX_BILL_TYP_NM, V.INV_VERI_YN,
+               V.PURC_CHRG_ID, V.PURC_CHRG_NM, TO_CHAR(V.TRAD_START_YMD,'YYYY-MM-DD') AS TRAD_START_YMD,
+               V.SEG_CD, V.SEG_NM,
+               TO_CHAR(V.STOP_YMD,'YYYY-MM-DD') AS STOP_YMD, V.STOP_REASON, V.RISK_GRADE,
+               TO_CHAR(V.NEXT_EVAL_YMD,'YYYY-MM-DD') AS NEXT_EVAL_YMD,
+               V.REG_STS, RS.CD_NM_KO AS REG_STS_NM, V.REMARK, V.USE_YN, V.REG_ID
+          FROM VD_VENDOR V
+          LEFT JOIN CM_CODE T ON T.GRP_CD='VD_TYP' AND T.CD=V.VD_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='VD_STS' AND S.CD=V.VD_STS AND S.DEL_YN='N'
+          LEFT JOIN CM_CODE RS ON RS.GRP_CD='VD_REG_STS' AND RS.CD=V.REG_STS AND RS.DEL_YN='N'
+          LEFT JOIN CM_CODE ISC ON ISC.GRP_CD='IND_SECT' AND ISC.CD=V.IND_SECT_CD AND ISC.DEL_YN='N'
+          LEFT JOIN CM_CODE TF ON TF.GRP_CD='TRAD_FORM' AND TF.CD=V.TRAD_FORM_CD AND TF.DEL_YN='N'
+          LEFT JOIN CM_CODE VS ON VS.GRP_CD='VD_SIZE' AND VS.CD=V.VD_SIZE_CD AND VS.DEL_YN='N'
+          LEFT JOIN CM_CODE TB ON TB.GRP_CD='TAX_BILL_TYP' AND TB.CD=V.TAX_BILL_TYP AND TB.DEL_YN='N'
+          LEFT JOIN CM_CODE PT ON PT.GRP_CD='PAY_TERM' AND PT.CD=V.PAY_TERM_CD AND PT.DEL_YN='N'
+          LEFT JOIN CM_CODE PM ON PM.GRP_CD='PAY_METHOD' AND PM.CD=V.PAY_METHOD_CD AND PM.DEL_YN='N'
+         WHERE V.ID = #{id} AND V.DEL_YN = 'N'
+    </select>
+
+    <insert id="insert" parameterType="com.purchasesystem.domain.vendor.VdVendor"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO VD_VENDOR (COMP_CD, VD_CD, ERP_VD_CD, VD_NM, VD_NM_EN, BIZ_NO, CORP_NO, CEO_NM,
+                               VD_TYP, BIZ_COND, BIZ_ITEM, ADDR, TEL, FAX, EMAIL, PAY_COND, PAY_TERM_CD, PAY_METHOD_CD, VD_STS,
+                               ZIP_CD, ADDR_EN, MOBILE, HOMEPAGE, IND_SECT_CD, TRAD_FORM_CD, VD_SIZE_CD,
+                               LISTED_YN, FND_DATE, CURR_CD, BANK_CD, BANK_NM, ACCT_NO, ACCT_HOLDER,
+                               TAX_BILL_TYP, INV_VERI_YN, CREDIT_LIMIT, PURC_CHRG_ID, PURC_CHRG_NM, TRAD_START_YMD,
+                               SEG_CD, SEG_NM, REG_STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{vdCd}, #{erpVdCd}, #{vdNm}, #{vdNmEn}, #{bizNo}, #{corpNo}, #{ceoNm},
+                #{vdTyp}, #{bizCond}, #{bizItem}, #{addr}, #{tel}, #{fax}, #{email}, #{payCond}, #{payTermCd}, #{payMethodCd},
+                NVL(#{vdSts}, 'STOP'),
+                #{zipCd}, #{addrEn}, #{mobile}, #{homepage}, #{indSectCd}, #{tradFormCd}, #{vdSizeCd},
+                NVL(#{listedYn},'N'), TO_DATE(#{fndDate},'YYYY-MM-DD'), NVL(#{currCd},'KRW'), #{bankCd}, #{bankNm}, #{acctNo}, #{acctHolder},
+                #{taxBillTyp}, NVL(#{invVeriYn},'N'), NVL(#{creditLimit},0), #{purcChrgId}, #{purcChrgNm}, TO_DATE(#{tradStartYmd},'YYYY-MM-DD'),
+                #{segCd}, #{segNm}, NVL(#{regSts},'DRAFT'), #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <update id="update" parameterType="com.purchasesystem.domain.vendor.VdVendor">
+        UPDATE VD_VENDOR
+           SET VD_NM=#{vdNm}, VD_NM_EN=#{vdNmEn}, BIZ_NO=#{bizNo}, CORP_NO=#{corpNo},
+               CEO_NM=#{ceoNm}, VD_TYP=#{vdTyp}, BIZ_COND=#{bizCond}, BIZ_ITEM=#{bizItem},
+               ADDR=#{addr}, TEL=#{tel}, FAX=#{fax}, EMAIL=#{email}, PAY_COND=#{payCond},
+               PAY_TERM_CD=#{payTermCd}, PAY_METHOD_CD=#{payMethodCd},
+               ZIP_CD=#{zipCd}, ADDR_EN=#{addrEn}, MOBILE=#{mobile}, HOMEPAGE=#{homepage},
+               IND_SECT_CD=#{indSectCd}, TRAD_FORM_CD=#{tradFormCd}, VD_SIZE_CD=#{vdSizeCd},
+               LISTED_YN=NVL(#{listedYn},'N'), FND_DATE=TO_DATE(#{fndDate},'YYYY-MM-DD'), CURR_CD=#{currCd},
+               BANK_CD=#{bankCd}, BANK_NM=#{bankNm}, ACCT_NO=#{acctNo}, ACCT_HOLDER=#{acctHolder},
+               TAX_BILL_TYP=#{taxBillTyp}, INV_VERI_YN=NVL(#{invVeriYn},'N'), CREDIT_LIMIT=NVL(#{creditLimit},0),
+               PURC_CHRG_ID=#{purcChrgId}, PURC_CHRG_NM=#{purcChrgNm},
+               TRAD_START_YMD=TO_DATE(#{tradStartYmd},'YYYY-MM-DD'), SEG_CD=#{segCd}, SEG_NM=#{segNm}, REMARK=#{remark},
+               MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP
+         WHERE ID = #{id}
+    </update>
+
+    <update id="updateRegStatus">
+        UPDATE VD_VENDOR SET REG_STS=#{regSts},
+               VD_STS = NVL(#{vdSts}, VD_STS), MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+
+    <update id="deleteVendor">
+        UPDATE VD_VENDOR SET DEL_YN = 'Y', MOD_ID = #{modId}, MOD_DT = SYSTIMESTAMP WHERE ID = #{id}
+    </update>
+
+    <select id="findPayInfo" resultType="com.purchasesystem.domain.vendor.VdVendor">
+        SELECT VD_CD, VD_NM, PAY_TERM_CD, PAY_METHOD_CD, PAY_COND, CURR_CD,
+               BANK_CD, BANK_NM, ACCT_NO, ACCT_HOLDER
+          FROM VD_VENDOR WHERE VD_CD = #{vdCd} AND DEL_YN = 'N'
+    </select>
+
+    <update id="updateTradeStatus">
+        UPDATE VD_VENDOR SET VD_STS=#{vdSts},
+               STOP_YMD = <choose><when test="vdSts == 'STOP'">TO_DATE(#{stopYmd},'YYYY-MM-DD')</when><otherwise>NULL</otherwise></choose>,
+               STOP_REASON=#{reason}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP
+         WHERE ID=#{id}
+    </update>
+    <select id="findStopHis" resultType="com.purchasesystem.domain.vendor.VdStopHis">
+        SELECT ID, VENDOR_ID, VD_CD, ACTION, REASON, ACTOR_ID, TO_CHAR(ACTION_DT,'YYYY-MM-DD HH24:MI') AS ACTION_DT
+          FROM VD_STOP_HIS WHERE VENDOR_ID=#{vendorId} ORDER BY ID DESC
+    </select>
+    <insert id="insertStopHis" parameterType="com.purchasesystem.domain.vendor.VdStopHis">
+        INSERT INTO VD_STOP_HIS (VENDOR_ID, VD_CD, ACTION, REASON, ACTOR_ID)
+        VALUES (#{vendorId}, #{vdCd}, #{action}, #{reason}, #{actorId})
+    </insert>
+
+    <select id="findContacts" resultType="com.purchasesystem.domain.vendor.VdContact">
+        SELECT ID, VENDOR_ID, LINE_NO, CONTACT_NM, POSITION, DEPT, TEL, MOBILE, EMAIL, REP_YN, REMARK
+          FROM VD_CONTACT WHERE VENDOR_ID=#{vendorId} ORDER BY LINE_NO
+    </select>
+    <insert id="insertContact" parameterType="com.purchasesystem.domain.vendor.VdContact">
+        INSERT INTO VD_CONTACT (VENDOR_ID, LINE_NO, CONTACT_NM, POSITION, DEPT, TEL, MOBILE, EMAIL, REP_YN, REMARK, REG_ID)
+        VALUES (#{vendorId}, #{lineNo}, #{contactNm}, #{position}, #{dept}, #{tel}, #{mobile}, #{email}, NVL(#{repYn},'N'), #{remark}, 'SYSTEM')
+    </insert>
+    <delete id="deleteContacts">DELETE FROM VD_CONTACT WHERE VENDOR_ID=#{vendorId}</delete>
+
+    <select id="findLicenses" resultType="com.purchasesystem.domain.vendor.VdLicense">
+        SELECT L.ID, L.VENDOR_ID, L.LINE_NO, L.LIC_TYP, C.CD_NM_KO AS LIC_TYP_NM, L.LIC_NM, L.LIC_NO,
+               L.ISSUE_ORG, TO_CHAR(L.ISSUE_YMD,'YYYY-MM-DD') AS ISSUE_YMD, TO_CHAR(L.EXPIRE_YMD,'YYYY-MM-DD') AS EXPIRE_YMD, L.REMARK
+          FROM VD_LICENSE L
+          LEFT JOIN CM_CODE C ON C.GRP_CD='LIC_TYP' AND C.CD=L.LIC_TYP AND C.DEL_YN='N'
+         WHERE L.VENDOR_ID=#{vendorId} ORDER BY L.LINE_NO
+    </select>
+    <insert id="insertLicense" parameterType="com.purchasesystem.domain.vendor.VdLicense">
+        INSERT INTO VD_LICENSE (VENDOR_ID, LINE_NO, LIC_TYP, LIC_NM, LIC_NO, ISSUE_ORG, ISSUE_YMD, EXPIRE_YMD, REMARK, REG_ID)
+        VALUES (#{vendorId}, #{lineNo}, #{licTyp}, #{licNm}, #{licNo}, #{issueOrg},
+                TO_DATE(#{issueYmd},'YYYY-MM-DD'), TO_DATE(#{expireYmd},'YYYY-MM-DD'), #{remark}, 'SYSTEM')
+    </insert>
+    <delete id="deleteLicenses">DELETE FROM VD_LICENSE WHERE VENDOR_ID=#{vendorId}</delete>
+
+</mapper>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.item.mapper.ItemMapper">
+
+    <!-- ===== 분류 ===== -->
+    <select id="findCategories" resultType="com.purchasesystem.domain.item.ItCategory">
+        SELECT ID, CATE_CD, CATE_NM, UP_CATE_CD, CATE_LVL, SORT_NO, LEAF_YN, USE_YN
+          FROM IT_CATEGORY WHERE DEL_YN = 'N'
+         ORDER BY CATE_LVL, SORT_NO, CATE_CD
+    </select>
+
+    <select id="countByCateCd" resultType="int">
+        SELECT COUNT(*) FROM IT_CATEGORY WHERE CATE_CD = #{cateCd} AND DEL_YN = 'N'
+    </select>
+    <select id="countChildCate" resultType="int">
+        SELECT COUNT(*) FROM IT_CATEGORY WHERE UP_CATE_CD = #{cateCd} AND DEL_YN = 'N'
+    </select>
+    <select id="countItemByCate" resultType="int">
+        SELECT COUNT(*) FROM IT_ITEM WHERE CATE_CD = #{cateCd} AND DEL_YN = 'N'
+    </select>
+
+    <insert id="insertCategory" parameterType="com.purchasesystem.domain.item.ItCategory">
+        INSERT INTO IT_CATEGORY (CATE_CD, CATE_NM, UP_CATE_CD, CATE_LVL, SORT_NO, LEAF_YN, USE_YN, REG_ID, MOD_ID)
+        VALUES (#{cateCd}, #{cateNm}, #{upCateCd}, NVL(#{cateLvl},1), NVL(#{sortNo},1),
+                NVL(#{leafYn},'Y'), NVL(#{useYn},'Y'), #{regId}, #{regId})
+    </insert>
+    <update id="updateCategory" parameterType="com.purchasesystem.domain.item.ItCategory">
+        UPDATE IT_CATEGORY SET CATE_NM = #{cateNm}, UP_CATE_CD = #{upCateCd}, CATE_LVL = #{cateLvl},
+               SORT_NO = #{sortNo}, LEAF_YN = #{leafYn}, USE_YN = #{useYn},
+               MOD_ID = #{modId}, MOD_DT = SYSTIMESTAMP
+         WHERE ID = #{id}
+    </update>
+    <update id="deleteCategory">
+        UPDATE IT_CATEGORY SET DEL_YN = 'Y', MOD_ID = #{modId}, MOD_DT = SYSTIMESTAMP WHERE ID = #{id}
+    </update>
+
+    <!-- ===== 품목 ===== -->
+    <select id="findList" resultType="com.purchasesystem.domain.item.ItItem">
+        SELECT I.ID, I.COMP_CD, I.ITEM_CD, I.ITEM_NM, I.SPEC, I.CATE_CD, CT.CATE_NM,
+               I.UNIT_CD, I.ITEM_TYP, T.CD_NM_KO AS ITEM_TYP_NM, I.TAX_TYP, TX.CD_NM_KO AS TAX_TYP_NM,
+               I.ITEM_STS, S.CD_NM_KO AS ITEM_STS_NM, I.REG_ID
+          FROM IT_ITEM I
+          LEFT JOIN IT_CATEGORY CT ON CT.CATE_CD = I.CATE_CD AND CT.DEL_YN = 'N'
+          LEFT JOIN CM_CODE T ON T.GRP_CD='ITEM_TYP' AND T.CD=I.ITEM_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE TX ON TX.GRP_CD='TAX_TYP' AND TX.CD=I.TAX_TYP AND TX.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='ITEM_STS' AND S.CD=I.ITEM_STS AND S.DEL_YN='N'
+         WHERE I.DEL_YN = 'N'
+        <if test="keyword != null and keyword != ''">
+           AND (I.ITEM_CD LIKE '%' || #{keyword} || '%' OR I.ITEM_NM LIKE '%' || #{keyword} || '%')
+        </if>
+        <if test="cateCd != null and cateCd != ''">AND I.CATE_CD = #{cateCd}</if>
+        <if test="itemSts != null and itemSts != ''">AND I.ITEM_STS = #{itemSts}</if>
+         ORDER BY I.ITEM_CD
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.item.ItItem">
+        SELECT I.ID, I.COMP_CD, I.ITEM_CD, I.ERP_ITEM_CD, I.ITEM_NM, I.ITEM_NM_EN, I.SPEC,
+               I.CATE_CD, CT.CATE_NM, I.UNIT_CD, I.ITEM_TYP, I.TAX_TYP,
+               I.SAFETY_STOCK, I.REORDER_POINT, I.ORDER_QTY, I.MOQ, I.LEAD_TIME, I.REP_VD_CD, I.REP_VD_NM,
+               I.ITEM_STS, I.REMARK, I.USE_YN, I.REG_ID
+          FROM IT_ITEM I
+          LEFT JOIN IT_CATEGORY CT ON CT.CATE_CD = I.CATE_CD AND CT.DEL_YN = 'N'
+         WHERE I.ID = #{id} AND I.DEL_YN = 'N'
+    </select>
+
+    <insert id="insertItem" parameterType="com.purchasesystem.domain.item.ItItem"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO IT_ITEM (COMP_CD, ITEM_CD, ERP_ITEM_CD, ITEM_NM, ITEM_NM_EN, SPEC, CATE_CD,
+                             UNIT_CD, ITEM_TYP, TAX_TYP, SAFETY_STOCK, REORDER_POINT, ORDER_QTY, MOQ, LEAD_TIME, REP_VD_CD, REP_VD_NM,
+                             ITEM_STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{itemCd}, #{erpItemCd}, #{itemNm}, #{itemNmEn}, #{spec}, #{cateCd},
+                #{unitCd}, #{itemTyp}, NVL(#{taxTyp},'TAX'), NVL(#{safetyStock},0), NVL(#{reorderPoint},0), NVL(#{orderQty},0), NVL(#{moq},0), NVL(#{leadTime},0), #{repVdCd}, #{repVdNm},
+                NVL(#{itemSts},'ACTIVE'), #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <update id="updateItem" parameterType="com.purchasesystem.domain.item.ItItem">
+        UPDATE IT_ITEM SET ITEM_NM = #{itemNm}, ITEM_NM_EN = #{itemNmEn}, SPEC = #{spec},
+               CATE_CD = #{cateCd}, UNIT_CD = #{unitCd}, ITEM_TYP = #{itemTyp}, TAX_TYP = #{taxTyp},
+               SAFETY_STOCK = NVL(#{safetyStock},0), REORDER_POINT = NVL(#{reorderPoint},0), ORDER_QTY = NVL(#{orderQty},0),
+               MOQ = NVL(#{moq},0), LEAD_TIME = NVL(#{leadTime},0), REP_VD_CD = #{repVdCd}, REP_VD_NM = #{repVdNm},
+               ITEM_STS = #{itemSts}, REMARK = #{remark}, MOD_ID = #{modId}, MOD_DT = SYSTIMESTAMP
+         WHERE ID = #{id}
+    </update>
+
+    <update id="deleteItem">
+        UPDATE IT_ITEM SET DEL_YN = 'Y', MOD_ID = #{modId}, MOD_DT = SYSTIMESTAMP WHERE ID = #{id}
+    </update>
+
+</mapper>

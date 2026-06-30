@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.po.mapper.PoMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.po.PoOrder">
+        SELECT O.ID, O.COMP_CD, O.PO_NO, O.PO_REV, O.PO_TITLE, O.VD_CD, O.VD_NM,
+               TO_CHAR(O.PO_YMD, 'YYYY-MM-DD') AS PO_YMD,
+               TO_CHAR(O.DLV_YMD, 'YYYY-MM-DD') AS DLV_YMD,
+               O.CURR_CD, O.SUPL_AMT, O.VAT_AMT, O.TOT_AMT, O.STS,
+               C.CD_NM_KO AS STS_NM,
+               O.REG_ID, TO_CHAR(O.REG_DT, 'YYYY-MM-DD HH24:MI') AS REG_DT
+          FROM PO_ORDER O
+          LEFT JOIN CM_CODE C ON C.GRP_CD = 'PO_STS' AND C.CD = O.STS AND C.DEL_YN = 'N'
+         WHERE O.DEL_YN = 'N'
+        <if test="keyword != null and keyword != ''">
+           AND (O.PO_NO LIKE '%' || #{keyword} || '%' OR O.PO_TITLE LIKE '%' || #{keyword} || '%'
+                OR O.VD_NM LIKE '%' || #{keyword} || '%')
+        </if>
+        <if test="sts != null and sts != ''">
+           AND O.STS = #{sts}
+        </if>
+         ORDER BY O.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.po.PoOrder">
+        SELECT O.ID, O.COMP_CD, O.PO_NO, O.PO_REV, O.PO_TITLE, O.VD_CD, O.VD_NM,
+               O.PURC_GRP_CD, O.CHRG_USR_ID, O.OPER_ORG_CD, O.SRC_TYP, O.SRC_ID,
+               TO_CHAR(O.PO_YMD, 'YYYY-MM-DD') AS PO_YMD,
+               TO_CHAR(O.DLV_YMD, 'YYYY-MM-DD') AS DLV_YMD, TO_CHAR(O.REQ_DLV_YMD, 'YYYY-MM-DD') AS REQ_DLV_YMD,
+               O.DLV_PLACE, O.WH_CD, WH.CD_NM_KO AS WH_NM,
+               O.DLV_COND, O.PAY_COND, O.PAY_TERM_CD, PTM.CD_NM_KO AS PAY_TERM_NM,
+               O.PAY_METHOD_CD, PMM.CD_NM_KO AS PAY_METHOD_NM, O.CURR_CD, O.SUPL_AMT, O.VAT_AMT, O.TOT_AMT,
+               O.PO_TYP, PT.CD_NM_KO AS PO_TYP_NM, O.PURC_TYP, CT.CD_NM_KO AS PURC_TYP_NM,
+               O.PERFOR_BOND_YN AS PERFORM_BOND_YN, O.PERFOR_BOND_RATE AS PERFORM_BOND_RATE,
+               O.MAINT_BOND_YN, O.MAINT_BOND_RATE, O.PAY_PLAN_YN,
+               O.STS, C.CD_NM_KO AS STS_NM, O.REMARK,
+               O.REG_ID, TO_CHAR(O.REG_DT, 'YYYY-MM-DD HH24:MI') AS REG_DT
+          FROM PO_ORDER O
+          LEFT JOIN CM_CODE C ON C.GRP_CD = 'PO_STS' AND C.CD = O.STS AND C.DEL_YN = 'N'
+          LEFT JOIN CM_CODE PT ON PT.GRP_CD = 'PO_TYP' AND PT.CD = O.PO_TYP AND PT.DEL_YN = 'N'
+          LEFT JOIN CM_CODE CT ON CT.GRP_CD = 'PURC_TYP' AND CT.CD = O.PURC_TYP AND CT.DEL_YN = 'N'
+          LEFT JOIN CM_CODE PTM ON PTM.GRP_CD = 'PAY_TERM' AND PTM.CD = O.PAY_TERM_CD AND PTM.DEL_YN = 'N'
+          LEFT JOIN CM_CODE PMM ON PMM.GRP_CD = 'PAY_METHOD' AND PMM.CD = O.PAY_METHOD_CD AND PMM.DEL_YN = 'N'
+          LEFT JOIN CM_CODE WH ON WH.GRP_CD = 'WH' AND WH.CD = O.WH_CD AND WH.DEL_YN = 'N'
+         WHERE O.ID = #{id} AND O.DEL_YN = 'N'
+    </select>
+
+    <select id="findItems" resultType="com.purchasesystem.domain.po.PoItem">
+        SELECT ID, ORDER_ID, LINE_NO, PR_ITEM_ID, ITEM_CD, ITEM_NM, SPEC, UNIT_CD,
+               QTY, PRC, TAX_TYP, SUPL_AMT, VAT_AMT, AMT,
+               TO_CHAR(DLV_YMD, 'YYYY-MM-DD') AS DLV_YMD, TO_CHAR(REQ_DLV_YMD, 'YYYY-MM-DD') AS REQ_DLV_YMD,
+               WH_CD, GR_QTY, REMARK
+          FROM PO_ORDER_ITEM
+         WHERE ORDER_ID = #{orderId}
+         ORDER BY LINE_NO
+    </select>
+
+    <insert id="insertOrder" parameterType="com.purchasesystem.domain.po.PoOrder"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO PO_ORDER (COMP_CD, PO_NO, PO_REV, PO_TITLE, VD_CD, VD_NM, PURC_GRP_CD,
+                              CHRG_USR_ID, OPER_ORG_CD, SRC_TYP, SRC_ID, PO_YMD, DLV_YMD, REQ_DLV_YMD, DLV_PLACE, WH_CD,
+                              DLV_COND, PAY_COND, PAY_TERM_CD, PAY_METHOD_CD, CURR_CD, SUPL_AMT, VAT_AMT, TOT_AMT,
+                              PO_TYP, PURC_TYP, PERFOR_BOND_YN, PERFOR_BOND_RATE, MAINT_BOND_YN, MAINT_BOND_RATE, PAY_PLAN_YN,
+                              STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{poNo}, NVL(#{poRev}, 0), #{poTitle}, #{vdCd}, #{vdNm}, #{purcGrpCd},
+                #{chrgUsrId}, #{operOrgCd}, NVL(#{srcTyp}, 'DIRECT'), #{srcId},
+                TO_DATE(#{poYmd}, 'YYYY-MM-DD'), TO_DATE(#{dlvYmd}, 'YYYY-MM-DD'), TO_DATE(#{reqDlvYmd}, 'YYYY-MM-DD'), #{dlvPlace}, #{whCd},
+                #{dlvCond}, #{payCond}, #{payTermCd}, #{payMethodCd}, NVL(#{currCd}, 'KRW'),
+                NVL(#{suplAmt}, 0), NVL(#{vatAmt}, 0), NVL(#{totAmt}, 0),
+                NVL(#{poTyp},'STD'), NVL(#{purcTyp},'MT'), NVL(#{performBondYn},'N'), NVL(#{performBondRate},0),
+                NVL(#{maintBondYn},'N'), NVL(#{maintBondRate},0), NVL(#{payPlanYn},'N'),
+                NVL(#{sts}, 'TMP'), #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <update id="updateOrder" parameterType="com.purchasesystem.domain.po.PoOrder">
+        UPDATE PO_ORDER
+           SET PO_TITLE = #{poTitle}, VD_CD = #{vdCd}, VD_NM = #{vdNm}, PURC_GRP_CD = #{purcGrpCd},
+               OPER_ORG_CD = #{operOrgCd},
+               PO_YMD = TO_DATE(#{poYmd}, 'YYYY-MM-DD'), DLV_YMD = TO_DATE(#{dlvYmd}, 'YYYY-MM-DD'),
+               REQ_DLV_YMD = TO_DATE(#{reqDlvYmd}, 'YYYY-MM-DD'), DLV_PLACE = #{dlvPlace}, WH_CD = #{whCd},
+               DLV_COND = #{dlvCond}, PAY_COND = #{payCond}, PAY_TERM_CD = #{payTermCd}, PAY_METHOD_CD = #{payMethodCd}, CURR_CD = #{currCd},
+               SUPL_AMT = #{suplAmt}, VAT_AMT = #{vatAmt}, TOT_AMT = #{totAmt},
+               PO_TYP = NVL(#{poTyp},'STD'), PURC_TYP = NVL(#{purcTyp},'MT'),
+               PERFOR_BOND_YN = NVL(#{performBondYn},'N'), PERFOR_BOND_RATE = NVL(#{performBondRate},0),
+               MAINT_BOND_YN = NVL(#{maintBondYn},'N'), MAINT_BOND_RATE = NVL(#{maintBondRate},0),
+               PAY_PLAN_YN = NVL(#{payPlanYn},'N'), REMARK = #{remark},
+               MOD_ID = #{modId}, MOD_DT = SYSTIMESTAMP
+         WHERE ID = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE PO_ORDER SET STS = #{sts}, MOD_ID = #{modId}, MOD_DT = SYSTIMESTAMP WHERE ID = #{id}
+    </update>
+
+    <update id="deleteOrder">
+        UPDATE PO_ORDER SET DEL_YN = 'Y', MOD_ID = #{modId}, MOD_DT = SYSTIMESTAMP WHERE ID = #{id}
+    </update>
+
+    <insert id="insertItem" parameterType="com.purchasesystem.domain.po.PoItem">
+        INSERT INTO PO_ORDER_ITEM (ORDER_ID, LINE_NO, PR_ITEM_ID, ITEM_CD, ITEM_NM, SPEC, UNIT_CD,
+                                   QTY, PRC, TAX_TYP, SUPL_AMT, VAT_AMT, AMT, DLV_YMD, REQ_DLV_YMD, WH_CD, REMARK, REG_ID, MOD_ID)
+        VALUES (#{orderId}, #{lineNo}, #{prItemId}, #{itemCd}, #{itemNm}, #{spec}, #{unitCd},
+                NVL(#{qty}, 0), NVL(#{prc}, 0), NVL(#{taxTyp},'TAX'), NVL(#{suplAmt}, 0), NVL(#{vatAmt}, 0), NVL(#{amt}, 0),
+                TO_DATE(#{dlvYmd}, 'YYYY-MM-DD'), TO_DATE(#{reqDlvYmd}, 'YYYY-MM-DD'), #{whCd}, #{remark}, 'SYSTEM', 'SYSTEM')
+    </insert>
+
+    <delete id="deleteItems">
+        DELETE FROM PO_ORDER_ITEM WHERE ORDER_ID = #{orderId}
+    </delete>
+
+    <select id="findPayPlans" resultType="com.purchasesystem.domain.po.PoPayPlan">
+        SELECT P.ID, P.ORDER_ID, P.LINE_NO, P.PAY_TYP, C.CD_NM_KO AS PAY_TYP_NM, P.PAY_NM,
+               P.RATE, P.AMT, TO_CHAR(P.PLAN_YMD,'YYYY-MM-DD') AS PLAN_YMD, P.PAID_YN, P.REMARK
+          FROM PO_PAY_PLAN P
+          LEFT JOIN CM_CODE C ON C.GRP_CD='PO_PAY_TYP' AND C.CD=P.PAY_TYP AND C.DEL_YN='N'
+         WHERE P.ORDER_ID=#{orderId} ORDER BY P.LINE_NO
+    </select>
+    <insert id="insertPayPlan" parameterType="com.purchasesystem.domain.po.PoPayPlan">
+        INSERT INTO PO_PAY_PLAN (ORDER_ID, LINE_NO, PAY_TYP, PAY_NM, RATE, AMT, PLAN_YMD, PAID_YN, REMARK, REG_ID)
+        VALUES (#{orderId}, #{lineNo}, #{payTyp}, #{payNm}, NVL(#{rate},0), NVL(#{amt},0),
+                TO_DATE(#{planYmd},'YYYY-MM-DD'), NVL(#{paidYn},'N'), #{remark}, 'SYSTEM')
+    </insert>
+    <delete id="deletePayPlans">DELETE FROM PO_PAY_PLAN WHERE ORDER_ID=#{orderId}</delete>
+
+    <!-- 분할납품 일정 -->
+    <select id="findDlvSchedules" resultType="com.purchasesystem.domain.po.PoDlvSchedule">
+        SELECT ID, ORDER_ID, PO_ITEM_ID, LINE_NO, ITEM_CD, ITEM_NM, PLAN_QTY,
+               TO_CHAR(PLAN_YMD,'YYYY-MM-DD') AS PLAN_YMD, DLV_PLACE, STS, REMARK
+          FROM PO_DLV_SCHEDULE WHERE ORDER_ID=#{orderId} ORDER BY LINE_NO
+    </select>
+    <insert id="insertDlvSchedule" parameterType="com.purchasesystem.domain.po.PoDlvSchedule">
+        INSERT INTO PO_DLV_SCHEDULE (ORDER_ID, PO_ITEM_ID, LINE_NO, ITEM_CD, ITEM_NM, PLAN_QTY, PLAN_YMD, DLV_PLACE, STS, REMARK, REG_ID)
+        VALUES (#{orderId}, #{poItemId}, #{lineNo}, #{itemCd}, #{itemNm}, NVL(#{planQty},0),
+                TO_DATE(#{planYmd},'YYYY-MM-DD'), #{dlvPlace}, NVL(#{sts},'PLAN'), #{remark}, 'SYSTEM')
+    </insert>
+    <delete id="deleteDlvSchedules">DELETE FROM PO_DLV_SCHEDULE WHERE ORDER_ID=#{orderId}</delete>
+
+    <!-- 여신: 협력사 한도 + 미결제 발주 잔액(확정 PC) -->
+    <select id="findCreditLimit" resultType="java.math.BigDecimal">
+        SELECT NVL(CREDIT_LIMIT,0) FROM VD_VENDOR WHERE VD_CD=#{vdCd} AND DEL_YN='N'
+    </select>
+    <select id="sumOutstanding" resultType="java.math.BigDecimal">
+        SELECT NVL(SUM(TOT_AMT),0) FROM PO_ORDER
+         WHERE VD_CD=#{vdCd} AND DEL_YN='N' AND STS='PC'
+        <if test="excludeId != null">AND ID != #{excludeId}</if>
+    </select>
+
+</mapper>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.approval.mapper.DelegateMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.approval.AppDelegate">
+        SELECT ID, COMP_CD, FROM_USR_ID, FROM_USR_NM, TO_USR_ID, TO_USR_NM,
+               TO_CHAR(VALID_SD,'YYYY-MM-DD') AS VALID_SD, TO_CHAR(VALID_ED,'YYYY-MM-DD') AS VALID_ED,
+               REMARK, USE_YN, REG_ID
+          FROM AP_DELEGATE WHERE DEL_YN='N'
+        <if test="fromUsrId != null and fromUsrId != ''">AND FROM_USR_ID=#{fromUsrId}</if>
+        <if test="toUsrId != null and toUsrId != ''">AND TO_USR_ID=#{toUsrId}</if>
+         ORDER BY ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.approval.AppDelegate">
+        SELECT ID, COMP_CD, FROM_USR_ID, FROM_USR_NM, TO_USR_ID, TO_USR_NM,
+               TO_CHAR(VALID_SD,'YYYY-MM-DD') AS VALID_SD, TO_CHAR(VALID_ED,'YYYY-MM-DD') AS VALID_ED,
+               REMARK, USE_YN, REG_ID
+          FROM AP_DELEGATE WHERE ID=#{id} AND DEL_YN='N'
+    </select>
+
+    <select id="findDelegatorsTo" resultType="string">
+        SELECT FROM_USR_ID FROM AP_DELEGATE
+         WHERE DEL_YN='N' AND USE_YN='Y' AND TO_USR_ID=#{toUsrId}
+           AND TO_DATE(#{ymd},'YYYY-MM-DD') BETWEEN VALID_SD AND VALID_ED
+    </select>
+
+    <select id="countActive" resultType="int">
+        SELECT COUNT(*) FROM AP_DELEGATE
+         WHERE DEL_YN='N' AND USE_YN='Y' AND FROM_USR_ID=#{fromUsrId} AND TO_USR_ID=#{toUsrId}
+           AND TO_DATE(#{ymd},'YYYY-MM-DD') BETWEEN VALID_SD AND VALID_ED
+    </select>
+
+    <insert id="insert" parameterType="com.purchasesystem.domain.approval.AppDelegate"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO AP_DELEGATE (COMP_CD, FROM_USR_ID, FROM_USR_NM, TO_USR_ID, TO_USR_NM,
+               VALID_SD, VALID_ED, REMARK, USE_YN, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{fromUsrId}, #{fromUsrNm}, #{toUsrId}, #{toUsrNm},
+               TO_DATE(#{validSd},'YYYY-MM-DD'), TO_DATE(#{validEd},'YYYY-MM-DD'), #{remark}, NVL(#{useYn},'Y'), #{regId}, #{regId})
+    </insert>
+
+    <update id="update" parameterType="com.purchasesystem.domain.approval.AppDelegate">
+        UPDATE AP_DELEGATE SET FROM_USR_ID=#{fromUsrId}, FROM_USR_NM=#{fromUsrNm}, TO_USR_ID=#{toUsrId}, TO_USR_NM=#{toUsrNm},
+               VALID_SD=TO_DATE(#{validSd},'YYYY-MM-DD'), VALID_ED=TO_DATE(#{validEd},'YYYY-MM-DD'),
+               REMARK=#{remark}, USE_YN=#{useYn}, MOD_ID=#{regId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="delete">UPDATE AP_DELEGATE SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+
+</mapper>

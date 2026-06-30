@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.attach.mapper.AttachMapper">
+
+    <select id="findByRef" resultType="com.purchasesystem.domain.attach.CmAttach">
+        SELECT ID, COMP_CD, REF_TYP, REF_ID, FILE_NM, STOR_NM, FILE_PATH, FILE_SIZE, CONTENT_TYP,
+               REMARK, REG_ID, TO_CHAR(REG_DT,'YYYY-MM-DD HH24:MI') AS REG_DT
+          FROM CM_ATTACH WHERE DEL_YN='N' AND REF_TYP=#{refTyp} AND REF_ID=#{refId}
+         ORDER BY ID
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.attach.CmAttach">
+        SELECT ID, COMP_CD, REF_TYP, REF_ID, FILE_NM, STOR_NM, FILE_PATH, FILE_SIZE, CONTENT_TYP, REG_ID
+          FROM CM_ATTACH WHERE ID=#{id} AND DEL_YN='N'
+    </select>
+
+    <insert id="insert" parameterType="com.purchasesystem.domain.attach.CmAttach"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO CM_ATTACH (COMP_CD, REF_TYP, REF_ID, FILE_NM, STOR_NM, FILE_PATH, FILE_SIZE, CONTENT_TYP, REMARK, REG_ID)
+        VALUES (#{compCd}, #{refTyp}, #{refId}, #{fileNm}, #{storNm}, #{filePath}, NVL(#{fileSize},0), #{contentTyp}, #{remark}, #{regId})
+    </insert>
+
+    <update id="softDelete">UPDATE CM_ATTACH SET DEL_YN='Y' WHERE ID=#{id}</update>
+
+</mapper>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.common.status.mapper.StatusMapper">
+
+    <select id="findActions" resultType="com.purchasesystem.common.status.CmStatusFlow">
+        SELECT DOC_TYP, FROM_STS, ACTION, TO_STS, ACTION_NM, DIRECTION, RSN_REQ_YN, SORT_NO
+          FROM CM_STATUS_FLOW
+         WHERE DOC_TYP = #{docTyp} AND FROM_STS = #{fromSts}
+           AND USE_YN = 'Y' AND DEL_YN = 'N'
+         ORDER BY SORT_NO
+    </select>
+
+    <select id="findFlow" resultType="com.purchasesystem.common.status.CmStatusFlow">
+        SELECT DOC_TYP, FROM_STS, ACTION, TO_STS, ACTION_NM, DIRECTION, RSN_REQ_YN, SORT_NO
+          FROM CM_STATUS_FLOW
+         WHERE DOC_TYP = #{docTyp} AND FROM_STS = #{fromSts} AND ACTION = #{action}
+           AND USE_YN = 'Y' AND DEL_YN = 'N'
+    </select>
+
+    <select id="nextSeq" resultType="int">
+        SELECT NVL(MAX(SEQ), 0) + 1 FROM LOG_DOC_STATUS_HIS
+         WHERE DOC_TYP = #{docTyp} AND DOC_ID = #{docId}
+    </select>
+
+    <insert id="insertHis" parameterType="com.purchasesystem.common.status.DocStatusHis">
+        INSERT INTO LOG_DOC_STATUS_HIS (DOC_TYP, DOC_ID, DOC_NO, SEQ, FROM_STS, TO_STS, ACTION, ACTION_NM, ACTOR_ID, RSN)
+        VALUES (#{docTyp}, #{docId}, #{docNo}, #{seq}, #{fromSts}, #{toSts}, #{action}, #{actionNm}, #{actorId}, #{rsn})
+    </insert>
+
+    <select id="findHis" resultType="com.purchasesystem.common.status.DocStatusHis">
+        SELECT ID, DOC_TYP, DOC_ID, DOC_NO, SEQ, FROM_STS, TO_STS, ACTION, ACTION_NM, ACTOR_ID,
+               TO_CHAR(ACTION_DT, 'YYYY-MM-DD HH24:MI:SS') AS ACTION_DT, RSN
+          FROM LOG_DOC_STATUS_HIS
+         WHERE DOC_TYP = #{docTyp} AND DOC_ID = #{docId}
+         ORDER BY SEQ
+    </select>
+
+</mapper>

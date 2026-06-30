@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.auction.mapper.AuctionMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.auction.AuAuction">
+        SELECT A.ID, A.AUCTION_NO, A.AUCTION_TITLE, A.START_PRC, A.AWARD_VD_NM, A.AWARD_AMT,
+               TO_CHAR(A.START_YMD,'YYYY-MM-DD') AS START_YMD, TO_CHAR(A.END_YMD,'YYYY-MM-DD') AS END_YMD,
+               A.STS, C.CD_NM_KO AS STS_NM, A.REG_ID
+          FROM AU_AUCTION A
+          LEFT JOIN CM_CODE C ON C.GRP_CD='AUCTION_STS' AND C.CD=A.STS AND C.DEL_YN='N'
+         WHERE A.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">
+           AND (A.AUCTION_NO LIKE '%'||#{keyword}||'%' OR A.AUCTION_TITLE LIKE '%'||#{keyword}||'%')
+        </if>
+        <if test="sts != null and sts != ''">AND A.STS=#{sts}</if>
+         ORDER BY A.ID DESC
+    </select>
+
+    <select id="findByVendor" resultType="com.purchasesystem.domain.auction.AuAuction">
+        SELECT A.ID, A.AUCTION_NO, A.AUCTION_TITLE, A.START_PRC, A.AWARD_VD_CD, A.AWARD_AMT,
+               TO_CHAR(A.START_YMD,'YYYY-MM-DD') AS START_YMD, TO_CHAR(A.END_YMD,'YYYY-MM-DD') AS END_YMD,
+               A.STS, C.CD_NM_KO AS STS_NM
+          FROM AU_AUCTION A
+          JOIN AU_AUCTION_VENDOR V ON V.AUCTION_ID = A.ID AND V.VD_CD = #{vdCd}
+          LEFT JOIN CM_CODE C ON C.GRP_CD='AUCTION_STS' AND C.CD=A.STS AND C.DEL_YN='N'
+         WHERE A.DEL_YN='N' AND A.STS IN ('OPEN','AWARD')
+         ORDER BY A.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.auction.AuAuction">
+        SELECT A.ID, A.COMP_CD, A.AUCTION_NO, A.AUCTION_TITLE, A.PURC_GRP_CD, A.CHRG_USR_ID,
+               TO_CHAR(A.START_YMD,'YYYY-MM-DD') AS START_YMD, TO_CHAR(A.END_YMD,'YYYY-MM-DD') AS END_YMD,
+               A.START_PRC, A.MIN_DOWN_PRC, A.CURR_CD, A.SRC_TYP, A.SRC_ID,
+               A.AWARD_VD_CD, A.AWARD_VD_NM, A.AWARD_AMT, A.STS, C.CD_NM_KO AS STS_NM, A.REMARK, A.REG_ID,
+               A.AUTO_EXT_YN, TO_CHAR(A.END_DT,'YYYY-MM-DD HH24:MI:SS') AS END_DT,
+               A.EXT_TRIGGER_MIN, A.EXT_MIN, A.MAX_EXT_CNT, A.EXT_CNT
+          FROM AU_AUCTION A
+          LEFT JOIN CM_CODE C ON C.GRP_CD='AUCTION_STS' AND C.CD=A.STS AND C.DEL_YN='N'
+         WHERE A.ID=#{id} AND A.DEL_YN='N'
+    </select>
+
+    <select id="findItems" resultType="com.purchasesystem.domain.auction.AuItem">
+        SELECT ID, AUCTION_ID, LINE_NO, PR_ITEM_ID, ITEM_CD, ITEM_NM, SPEC, UNIT_CD, QTY, START_PRC
+          FROM AU_AUCTION_ITEM WHERE AUCTION_ID=#{auctionId} ORDER BY LINE_NO
+    </select>
+
+    <select id="findVendors" resultType="com.purchasesystem.domain.auction.AuVendor">
+        SELECT ID, AUCTION_ID, VD_CD, VD_NM, JOIN_YN, AWARD_YN, LAST_BID_AMT, BID_CNT
+          FROM AU_AUCTION_VENDOR WHERE AUCTION_ID=#{auctionId}
+         ORDER BY LAST_BID_AMT ASC NULLS LAST, VD_CD
+    </select>
+
+    <select id="findBids" resultType="com.purchasesystem.domain.auction.AuBid">
+        SELECT ID, AUCTION_ID, VD_CD, VD_NM, BID_AMT, TO_CHAR(BID_DT,'YYYY-MM-DD HH24:MI:SS') AS BID_DT, RANK_NO
+          FROM AU_BID WHERE AUCTION_ID=#{auctionId} ORDER BY BID_DT DESC, ID DESC
+    </select>
+
+    <insert id="insertAuction" parameterType="com.purchasesystem.domain.auction.AuAuction"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO AU_AUCTION (COMP_CD, AUCTION_NO, AUCTION_TITLE, PURC_GRP_CD, CHRG_USR_ID,
+                                START_YMD, END_YMD, START_PRC, MIN_DOWN_PRC, CURR_CD, SRC_TYP, SRC_ID, STS, REMARK,
+                                AUTO_EXT_YN, END_DT, EXT_TRIGGER_MIN, EXT_MIN, MAX_EXT_CNT, EXT_CNT, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{auctionNo}, #{auctionTitle}, #{purcGrpCd}, #{chrgUsrId},
+                TO_DATE(#{startYmd},'YYYY-MM-DD'), TO_DATE(#{endYmd},'YYYY-MM-DD'),
+                NVL(#{startPrc},0), NVL(#{minDownPrc},0), NVL(#{currCd},'KRW'), #{srcTyp}, #{srcId},
+                NVL(#{sts},'TMP'), #{remark},
+                NVL(#{autoExtYn},'N'), TO_TIMESTAMP_TZ(#{endDt},'YYYY-MM-DD HH24:MI:SS'),
+                NVL(#{extTriggerMin},5), NVL(#{extMin},5), NVL(#{maxExtCnt},3), 0, #{regId}, #{regId})
+    </insert>
+
+    <update id="updateAuction" parameterType="com.purchasesystem.domain.auction.AuAuction">
+        UPDATE AU_AUCTION SET AUCTION_TITLE=#{auctionTitle},
+               START_YMD=TO_DATE(#{startYmd},'YYYY-MM-DD'), END_YMD=TO_DATE(#{endYmd},'YYYY-MM-DD'),
+               START_PRC=#{startPrc}, MIN_DOWN_PRC=#{minDownPrc}, CURR_CD=#{currCd}, REMARK=#{remark},
+               AUTO_EXT_YN=NVL(#{autoExtYn},'N'), END_DT=TO_TIMESTAMP_TZ(#{endDt},'YYYY-MM-DD HH24:MI:SS'),
+               EXT_TRIGGER_MIN=NVL(#{extTriggerMin},5), EXT_MIN=NVL(#{extMin},5), MAX_EXT_CNT=NVL(#{maxExtCnt},3),
+               MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <!-- 자동연장: 마감 N분 전 입찰 시 END_DT 연장 (1=연장됨) -->
+    <update id="tryAutoExtend">
+        UPDATE AU_AUCTION
+           SET END_DT = END_DT + NUMTODSINTERVAL(EXT_MIN,'MINUTE'), EXT_CNT = EXT_CNT + 1, MOD_DT = SYSTIMESTAMP
+         WHERE ID = #{id} AND AUTO_EXT_YN='Y' AND END_DT IS NOT NULL AND EXT_CNT &lt; MAX_EXT_CNT
+           AND SYSTIMESTAMP &lt;= END_DT
+           AND SYSTIMESTAMP &gt;= END_DT - NUMTODSINTERVAL(EXT_TRIGGER_MIN,'MINUTE')
+    </update>
+    <update id="updateStatus">UPDATE AU_AUCTION SET STS=#{sts}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <update id="updateAward">
+        UPDATE AU_AUCTION SET AWARD_VD_CD=#{vdCd}, AWARD_VD_NM=#{vdNm}, AWARD_AMT=#{awardAmt}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="deleteAuction">UPDATE AU_AUCTION SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+
+    <insert id="insertItem" parameterType="com.purchasesystem.domain.auction.AuItem">
+        INSERT INTO AU_AUCTION_ITEM (AUCTION_ID, LINE_NO, PR_ITEM_ID, ITEM_CD, ITEM_NM, SPEC, UNIT_CD, QTY, START_PRC, REG_ID)
+        VALUES (#{auctionId}, #{lineNo}, #{prItemId}, #{itemCd}, #{itemNm}, #{spec}, #{unitCd}, NVL(#{qty},0), NVL(#{startPrc},0), 'SYSTEM')
+    </insert>
+    <delete id="deleteItems">DELETE FROM AU_AUCTION_ITEM WHERE AUCTION_ID=#{auctionId}</delete>
+
+    <insert id="insertVendor" parameterType="com.purchasesystem.domain.auction.AuVendor">
+        INSERT INTO AU_AUCTION_VENDOR (AUCTION_ID, VD_CD, VD_NM, REG_ID) VALUES (#{auctionId}, #{vdCd}, #{vdNm}, 'SYSTEM')
+    </insert>
+    <delete id="deleteVendors">DELETE FROM AU_AUCTION_VENDOR WHERE AUCTION_ID=#{auctionId}</delete>
+
+    <select id="findVendor" resultType="com.purchasesystem.domain.auction.AuVendor">
+        SELECT ID, AUCTION_ID, VD_CD, VD_NM, JOIN_YN, AWARD_YN, LAST_BID_AMT, BID_CNT
+          FROM AU_AUCTION_VENDOR WHERE AUCTION_ID=#{auctionId} AND VD_CD=#{vdCd}
+    </select>
+    <insert id="insertBid" parameterType="com.purchasesystem.domain.auction.AuBid">
+        INSERT INTO AU_BID (AUCTION_ID, VD_CD, VD_NM, BID_AMT, RANK_NO, REG_ID)
+        VALUES (#{auctionId}, #{vdCd}, #{vdNm}, #{bidAmt}, #{rankNo}, 'SYSTEM')
+    </insert>
+    <update id="updateVendorBid">
+        UPDATE AU_AUCTION_VENDOR SET JOIN_YN='Y', LAST_BID_AMT=#{bidAmt}, BID_CNT=NVL(BID_CNT,0)+1
+         WHERE AUCTION_ID=#{auctionId} AND VD_CD=#{vdCd}
+    </update>
+    <update id="clearAwardYn">UPDATE AU_AUCTION_VENDOR SET AWARD_YN='N' WHERE AUCTION_ID=#{auctionId}</update>
+    <update id="setAwardYn">UPDATE AU_AUCTION_VENDOR SET AWARD_YN='Y' WHERE AUCTION_ID=#{auctionId} AND VD_CD=#{vdCd}</update>
+
+</mapper>

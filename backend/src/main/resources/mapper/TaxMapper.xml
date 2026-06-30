@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.tax.mapper.TaxMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.tax.TxTaxbill">
+        SELECT B.ID, B.BILL_NO, B.CLOSE_NO, B.VD_CD, B.VD_NM, TO_CHAR(B.BILL_YMD,'YYYY-MM-DD') AS BILL_YMD,
+               B.BILL_TYP, B.SUPPLY_AMT, B.VAT_AMT, B.TOT_AMT, B.BILL_STS, S.CD_NM_KO AS BILL_STS_NM, B.NTS_STATUS, B.REG_ID
+          FROM TX_TAXBILL B
+          LEFT JOIN CM_CODE S ON S.GRP_CD='TB_STS' AND S.CD=B.BILL_STS AND S.DEL_YN='N'
+         WHERE B.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">AND (B.BILL_NO LIKE '%'||#{keyword}||'%' OR B.VD_NM LIKE '%'||#{keyword}||'%' OR B.CLOSE_NO LIKE '%'||#{keyword}||'%')</if>
+        <if test="billSts != null and billSts != ''">AND B.BILL_STS=#{billSts}</if>
+         ORDER BY B.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.tax.TxTaxbill">
+        SELECT B.ID, B.COMP_CD, B.BILL_NO, B.CLOSE_ID, B.CLOSE_NO, B.VD_CD, B.VD_NM,
+               TO_CHAR(B.BILL_YMD,'YYYY-MM-DD') AS BILL_YMD, B.BILL_TYP, B.SUPPLY_AMT, B.VAT_AMT, B.TOT_AMT,
+               B.BILL_STS, S.CD_NM_KO AS BILL_STS_NM, B.NTS_STATUS, B.NTS_APPROVAL_NO,
+               TO_CHAR(B.WRITE_YMD,'YYYY-MM-DD') AS WRITE_YMD, TO_CHAR(B.ISSUE_YMD,'YYYY-MM-DD') AS ISSUE_YMD,
+               B.SUP_BIZ_NO, B.SUP_NM, B.SUP_CEO, B.SUP_ADDR, B.BUY_BIZ_NO, B.BUY_NM, B.BUY_CEO, B.BUY_ADDR,
+               B.BILL_KIND, B.ORIG_BILL_NO, B.MODIFY_RSN, B.REMARK, B.REG_ID
+          FROM TX_TAXBILL B
+          LEFT JOIN CM_CODE S ON S.GRP_CD='TB_STS' AND S.CD=B.BILL_STS AND S.DEL_YN='N'
+         WHERE B.ID=#{id} AND B.DEL_YN='N'
+    </select>
+
+    <!-- 공급자(협력사) / 공급받는자(자사) 사업자정보 스냅샷 조회 -->
+    <select id="findSupplier" resultType="com.purchasesystem.domain.tax.TxTaxbill">
+        SELECT BIZ_NO AS SUP_BIZ_NO, VD_NM AS SUP_NM, CEO_NM AS SUP_CEO, ADDR AS SUP_ADDR
+          FROM VD_VENDOR WHERE VD_CD=#{vdCd} AND DEL_YN='N'
+    </select>
+    <select id="findBuyer" resultType="com.purchasesystem.domain.tax.TxTaxbill">
+        SELECT BIZ_NO AS BUY_BIZ_NO, COMP_NM AS BUY_NM, CEO_NM AS BUY_CEO, ADDR AS BUY_ADDR
+          FROM CM_COMPANY WHERE COMP_CD=#{compCd}
+    </select>
+
+    <select id="findItems" resultType="com.purchasesystem.domain.tax.TxTaxbillItem">
+        SELECT ID, BILL_ID, LINE_NO, ITEM_CD, ITEM_NM, SPEC, QTY, UNIT_PRC, SUPPLY_AMT, VAT_AMT, REMARK
+          FROM TX_TAXBILL_ITEM WHERE BILL_ID=#{billId} ORDER BY LINE_NO
+    </select>
+    <insert id="insertItem" parameterType="com.purchasesystem.domain.tax.TxTaxbillItem">
+        INSERT INTO TX_TAXBILL_ITEM (BILL_ID, LINE_NO, ITEM_CD, ITEM_NM, SPEC, QTY, UNIT_PRC, SUPPLY_AMT, VAT_AMT, REMARK, REG_ID)
+        VALUES (#{billId}, #{lineNo}, #{itemCd}, #{itemNm}, #{spec}, NVL(#{qty},0), NVL(#{unitPrc},0), NVL(#{supplyAmt},0), NVL(#{vatAmt},0), #{remark}, #{regId})
+    </insert>
+
+    <!-- 정산 GR 품목을 집계한 품목명세 -->
+    <select id="findCloseItemLines" resultType="com.purchasesystem.domain.tax.TxTaxbillItem">
+        SELECT GI.ITEM_CD, MAX(GI.ITEM_NM) AS ITEM_NM, MAX(GI.SPEC) AS SPEC,
+               SUM(GI.GR_QTY) AS QTY, SUM(GI.AMT) AS SUPPLY_AMT,
+               SUM(CASE WHEN NVL(GI.TAX_TYP,'TAX')='TAX' THEN ROUND(GI.AMT*0.1) ELSE 0 END) AS VAT_AMT
+          FROM CL_CLOSE_GR CG
+          JOIN GR_RECEIPT_ITEM GI ON GI.RECEIPT_ID = CG.GR_ID
+         WHERE CG.CLOSE_ID=#{closeId}
+         GROUP BY GI.ITEM_CD ORDER BY GI.ITEM_CD
+    </select>
+
+    <insert id="insert" parameterType="com.purchasesystem.domain.tax.TxTaxbill"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO TX_TAXBILL (COMP_CD, BILL_NO, CLOSE_ID, CLOSE_NO, VD_CD, VD_NM, BILL_YMD, WRITE_YMD, BILL_TYP,
+               SUP_BIZ_NO, SUP_NM, SUP_CEO, SUP_ADDR, BUY_BIZ_NO, BUY_NM, BUY_CEO, BUY_ADDR, BILL_KIND,
+               SUPPLY_AMT, VAT_AMT, TOT_AMT, BILL_STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{billNo}, #{closeId}, #{closeNo}, #{vdCd}, #{vdNm}, TO_DATE(#{billYmd},'YYYY-MM-DD'),
+               TO_DATE(#{writeYmd},'YYYY-MM-DD'), NVL(#{billTyp},'TAX'),
+               #{supBizNo}, #{supNm}, #{supCeo}, #{supAddr}, #{buyBizNo}, #{buyNm}, #{buyCeo}, #{buyAddr}, NVL(#{billKind},'NORMAL'),
+               NVL(#{supplyAmt},0), NVL(#{vatAmt},0), NVL(#{totAmt},0), 'DRAFT', #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <update id="updateStatus">
+        UPDATE TX_TAXBILL SET BILL_STS=#{billSts}, NTS_STATUS=NVL(#{ntsStatus}, NTS_STATUS), MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="updateIssued">
+        UPDATE TX_TAXBILL SET BILL_STS='SENT', NTS_STATUS=#{ntsStatus}, NTS_APPROVAL_NO=#{ntsApprovalNo},
+               ISSUE_YMD=TO_DATE(#{issueYmd},'YYYY-MM-DD'), MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="delete">UPDATE TX_TAXBILL SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <select id="countByClose" resultType="int">SELECT COUNT(*) FROM TX_TAXBILL WHERE CLOSE_ID=#{closeId} AND DEL_YN='N' AND BILL_STS&lt;&gt;'CANCEL'</select>
+
+</mapper>

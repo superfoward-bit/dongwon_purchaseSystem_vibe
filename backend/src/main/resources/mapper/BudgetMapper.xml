@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.budget.mapper.BudgetMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.budget.BgBudget">
+        SELECT B.ID, B.COMP_CD, B.BUDGET_CD, B.BUDGET_NM, B.FISCAL_YEAR, B.DEPT_CD, B.ACCT_CD, B.BUDGET_AMT,
+               NVL((SELECT SUM(P.TOT_AMT) FROM PR_REQUEST P WHERE P.BUDGET_CD=B.BUDGET_CD AND P.DEL_YN='N' AND P.STS IN ('REQ','APRV')),0) AS USED_AMT,
+               B.USE_YN, B.REG_ID
+          FROM BG_BUDGET B
+         WHERE B.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">AND (B.BUDGET_CD LIKE '%'||#{keyword}||'%' OR B.BUDGET_NM LIKE '%'||#{keyword}||'%')</if>
+        <if test="fiscalYear != null and fiscalYear != ''">AND B.FISCAL_YEAR=#{fiscalYear}</if>
+         ORDER BY B.BUDGET_CD
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.budget.BgBudget">
+        SELECT B.ID, B.COMP_CD, B.BUDGET_CD, B.BUDGET_NM, B.FISCAL_YEAR, B.DEPT_CD, B.ACCT_CD, B.BUDGET_AMT,
+               NVL((SELECT SUM(P.TOT_AMT) FROM PR_REQUEST P WHERE P.BUDGET_CD=B.BUDGET_CD AND P.DEL_YN='N' AND P.STS IN ('REQ','APRV')),0) AS USED_AMT,
+               B.USE_YN, B.REG_ID
+          FROM BG_BUDGET B WHERE B.ID=#{id} AND B.DEL_YN='N'
+    </select>
+
+    <select id="findByCode" resultType="com.purchasesystem.domain.budget.BgBudget">
+        SELECT ID, COMP_CD, BUDGET_CD, BUDGET_NM, FISCAL_YEAR, BUDGET_AMT
+          FROM BG_BUDGET WHERE COMP_CD=#{compCd} AND BUDGET_CD=#{budgetCd} AND DEL_YN='N'
+    </select>
+
+    <select id="sumCommitted" resultType="java.math.BigDecimal">
+        SELECT NVL(SUM(TOT_AMT),0) FROM PR_REQUEST
+         WHERE BUDGET_CD=#{budgetCd} AND DEL_YN='N' AND STS IN ('REQ','APRV')
+        <if test="excludePrId != null">AND ID != #{excludePrId}</if>
+    </select>
+
+    <insert id="insert" parameterType="com.purchasesystem.domain.budget.BgBudget"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO BG_BUDGET (COMP_CD, BUDGET_CD, BUDGET_NM, FISCAL_YEAR, DEPT_CD, ACCT_CD, BUDGET_AMT, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{budgetCd}, #{budgetNm}, #{fiscalYear}, #{deptCd}, #{acctCd}, NVL(#{budgetAmt},0), #{regId}, #{regId})
+    </insert>
+    <update id="update" parameterType="com.purchasesystem.domain.budget.BgBudget">
+        UPDATE BG_BUDGET SET BUDGET_NM=#{budgetNm}, FISCAL_YEAR=#{fiscalYear}, DEPT_CD=#{deptCd}, ACCT_CD=#{acctCd},
+               BUDGET_AMT=NVL(#{budgetAmt},0), MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="delete">UPDATE BG_BUDGET SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+
+</mapper>

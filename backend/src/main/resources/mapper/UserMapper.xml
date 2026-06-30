@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.user.mapper.UserMapper">
+
+    <select id="findByLoginId" resultType="com.purchasesystem.domain.user.CmUser">
+        SELECT ID, COMP_CD, USR_ID, USR_NM, LOGIN_ID, PWD_HASH, DEPT_CD, POS_CD,
+               EMAIL, MOBILE, PURC_GRP_CD, LANG_CD, USR_TYP, VD_CD, PWD_FAIL_CNT, USE_YN, DEL_YN
+          FROM CM_USER
+         WHERE LOGIN_ID = #{loginId}
+           AND DEL_YN = 'N'
+    </select>
+
+    <select id="countByLoginId" resultType="int">
+        SELECT COUNT(*) FROM CM_USER WHERE LOGIN_ID = #{loginId}
+    </select>
+
+    <insert id="insertUser" parameterType="com.purchasesystem.domain.user.CmUser">
+        INSERT INTO CM_USER (COMP_CD, USR_ID, USR_NM, LOGIN_ID, PWD_HASH, DEPT_CD, POS_CD,
+                             EMAIL, MOBILE, PURC_GRP_CD, LANG_CD, USR_TYP, VD_CD, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{usrId}, #{usrNm}, #{loginId}, #{pwdHash}, #{deptCd}, #{posCd},
+                #{email}, #{mobile}, #{purcGrpCd}, NVL(#{langCd}, 'ko'), NVL(#{usrTyp}, 'EMP'), #{vdCd}, 'SYSTEM', 'SYSTEM')
+    </insert>
+
+    <update id="updateLastLogin">
+        UPDATE CM_USER SET LAST_LOGIN_DT = SYSTIMESTAMP, PWD_FAIL_CNT = 0 WHERE LOGIN_ID = #{loginId}
+    </update>
+
+    <select id="findRoleIds" resultType="string">
+        SELECT ROLE_ID FROM CM_USER_ROLE WHERE COMP_CD = #{compCd} AND USR_ID = #{usrId}
+    </select>
+
+    <insert id="insertUserRole">
+        INSERT INTO CM_USER_ROLE (COMP_CD, USR_ID, ROLE_ID, REG_ID)
+        VALUES (#{compCd}, #{usrId}, #{roleId}, 'SYSTEM')
+    </insert>
+
+    <!-- ===== 사용자 관리 ===== -->
+    <select id="findUsers" resultType="com.purchasesystem.domain.user.CmUser">
+        SELECT ID, COMP_CD, USR_ID, USR_NM, LOGIN_ID, DEPT_CD, POS_CD,
+               EMAIL, MOBILE, PURC_GRP_CD, LANG_CD, USR_TYP, VD_CD, USE_YN
+          FROM CM_USER
+         WHERE DEL_YN = 'N'
+        <if test="keyword != null and keyword != ''">
+           AND (USR_ID LIKE '%' || #{keyword} || '%'
+                OR USR_NM LIKE '%' || #{keyword} || '%'
+                OR LOGIN_ID LIKE '%' || #{keyword} || '%')
+        </if>
+         ORDER BY USR_ID
+    </select>
+
+    <select id="countByUsrId" resultType="int">
+        SELECT COUNT(*) FROM CM_USER WHERE COMP_CD = #{compCd} AND USR_ID = #{usrId} AND DEL_YN = 'N'
+    </select>
+
+    <update id="updateUser" parameterType="com.purchasesystem.domain.user.CmUser">
+        UPDATE CM_USER
+           SET USR_NM = #{usrNm}, DEPT_CD = #{deptCd}, POS_CD = #{posCd},
+               EMAIL = #{email}, MOBILE = #{mobile}, PURC_GRP_CD = #{purcGrpCd},
+               LANG_CD = #{langCd}, USR_TYP = #{usrTyp}, VD_CD = #{vdCd}, USE_YN = #{useYn},
+               MOD_ID = #{modId}, MOD_DT = SYSTIMESTAMP
+         WHERE ID = #{id}
+    </update>
+
+    <update id="deleteUser">
+        UPDATE CM_USER SET DEL_YN = 'Y', MOD_ID = #{modId}, MOD_DT = SYSTIMESTAMP
+         WHERE ID = #{id}
+    </update>
+
+    <update id="resetPassword">
+        UPDATE CM_USER SET PWD_HASH = #{pwdHash}, PWD_FAIL_CNT = 0, MOD_ID = #{modId}, MOD_DT = SYSTIMESTAMP
+         WHERE ID = #{id}
+    </update>
+
+    <delete id="deleteUserRoles">
+        DELETE FROM CM_USER_ROLE WHERE COMP_CD = #{compCd} AND USR_ID = #{usrId}
+    </delete>
+
+</mapper>

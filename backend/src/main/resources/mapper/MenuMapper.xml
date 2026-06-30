@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.menu.mapper.MenuMapper">
+
+    <!-- 사용자 역할이 가진 메뉴 + 그 상위메뉴(부모)까지 포함 -->
+    <select id="findMenusByUser" resultType="com.purchasesystem.domain.menu.CmMenu">
+        WITH AUTH_MENU AS (
+            SELECT RF.MENU_ID, MAX(RF.AUTH_CD) AS AUTH_CD
+              FROM CM_ROLE_FUNC RF
+              JOIN CM_USER_ROLE UR ON UR.ROLE_ID = RF.ROLE_ID
+             WHERE UR.COMP_CD = #{compCd}
+               AND UR.USR_ID  = #{usrId}
+             GROUP BY RF.MENU_ID
+        ),
+        LEAF AS (
+            SELECT M.*, A.AUTH_CD
+              FROM CM_MENU M
+              JOIN AUTH_MENU A ON A.MENU_ID = M.MENU_ID
+             WHERE M.USE_YN = 'Y' AND M.DEL_YN = 'N'
+        )
+        SELECT MENU_ID, MENU_NM, UP_MENU_ID, MENU_LVL, URL, ICON, SORT_NO, AUTH_CD
+          FROM LEAF
+        UNION
+        SELECT P.MENU_ID, P.MENU_NM, P.UP_MENU_ID, P.MENU_LVL, P.URL, P.ICON, P.SORT_NO, NULL AS AUTH_CD
+          FROM CM_MENU P
+         WHERE P.USE_YN = 'Y' AND P.DEL_YN = 'N'
+           AND P.MENU_ID IN (SELECT UP_MENU_ID FROM LEAF WHERE UP_MENU_ID IS NOT NULL)
+         ORDER BY 7, 1
+    </select>
+
+    <select id="findAllMenus" resultType="com.purchasesystem.domain.menu.CmMenu">
+        SELECT MENU_ID, MENU_NM, UP_MENU_ID, MENU_LVL, URL, ICON, SORT_NO, USE_YN
+          FROM CM_MENU
+         WHERE DEL_YN = 'N'
+         ORDER BY SORT_NO, MENU_ID
+    </select>
+
+    <select id="countByMenuId" resultType="int">
+        SELECT COUNT(*) FROM CM_MENU WHERE MENU_ID = #{menuId} AND DEL_YN = 'N'
+    </select>
+
+    <select id="countChildren" resultType="int">
+        SELECT COUNT(*) FROM CM_MENU WHERE UP_MENU_ID = #{menuId} AND DEL_YN = 'N'
+    </select>
+
+    <insert id="insertMenu" parameterType="com.purchasesystem.domain.menu.CmMenu">
+        INSERT INTO CM_MENU (MENU_ID, MENU_NM, UP_MENU_ID, MENU_LVL, URL, ICON, SORT_NO, USE_YN, REG_ID, MOD_ID)
+        VALUES (#{menuId}, #{menuNm}, #{upMenuId},
+                NVL(#{menuLvl}, 1), #{url}, #{icon}, NVL(#{sortNo}, 1),
+                NVL(#{useYn}, 'Y'), #{regId}, #{regId})
+    </insert>
+
+    <update id="updateMenu" parameterType="com.purchasesystem.domain.menu.CmMenu">
+        UPDATE CM_MENU
+           SET MENU_NM = #{menuNm}, UP_MENU_ID = #{upMenuId}, MENU_LVL = #{menuLvl},
+               URL = #{url}, ICON = #{icon}, SORT_NO = #{sortNo}, USE_YN = #{useYn},
+               MOD_ID = #{modId}, MOD_DT = SYSTIMESTAMP
+         WHERE ID = #{id}
+    </update>
+
+    <update id="deleteMenu">
+        UPDATE CM_MENU SET DEL_YN = 'Y', MOD_ID = #{modId}, MOD_DT = SYSTIMESTAMP
+         WHERE ID = #{id}
+    </update>
+
+</mapper>

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.rx.eval.mapper.RxEvalMapper">
+
+    <select id="findEvalCfg" resultType="map">
+        SELECT EVAL_YN AS "evalYn", PRICE_WEIGHT AS "priceWeight", PRICE_METHOD AS "priceMethod"
+          FROM RX_RFX WHERE ID=#{rfxId}
+    </select>
+
+    <update id="updateEvalCfg">
+        UPDATE RX_RFX SET EVAL_YN=NVL(#{evalYn},'N'), PRICE_WEIGHT=NVL(#{priceWeight},0),
+               PRICE_METHOD=NVL(#{priceMethod},'MR'), MOD_DT=SYSTIMESTAMP WHERE ID=#{rfxId}
+    </update>
+
+    <select id="findCriteria" resultType="com.purchasesystem.domain.rx.eval.RxEvalCriteria">
+        SELECT ID, RFX_ID, LINE_NO, CRITERIA_NM, WEIGHT, REMARK
+          FROM RX_EVAL_CRITERIA WHERE RFX_ID=#{rfxId} ORDER BY LINE_NO
+    </select>
+    <delete id="deleteCriteria">DELETE FROM RX_EVAL_CRITERIA WHERE RFX_ID=#{rfxId}</delete>
+    <insert id="insertCriteria" parameterType="com.purchasesystem.domain.rx.eval.RxEvalCriteria"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO RX_EVAL_CRITERIA (RFX_ID, LINE_NO, CRITERIA_NM, WEIGHT, REMARK, REG_ID)
+        VALUES (#{rfxId}, #{lineNo}, #{criteriaNm}, NVL(#{weight},0), #{remark}, 'SYSTEM')
+    </insert>
+
+    <select id="findEvaluators" resultType="com.purchasesystem.domain.rx.eval.RxEvaluator">
+        SELECT ID, RFX_ID, USR_ID, USR_NM FROM RX_EVALUATOR WHERE RFX_ID=#{rfxId} ORDER BY ID
+    </select>
+    <delete id="deleteEvaluators">DELETE FROM RX_EVALUATOR WHERE RFX_ID=#{rfxId}</delete>
+    <insert id="insertEvaluator" parameterType="com.purchasesystem.domain.rx.eval.RxEvaluator"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO RX_EVALUATOR (RFX_ID, USR_ID, USR_NM, REG_ID)
+        VALUES (#{rfxId}, #{usrId}, #{usrNm}, 'SYSTEM')
+    </insert>
+
+    <select id="findScores" resultType="com.purchasesystem.domain.rx.eval.RxEvalScore">
+        SELECT ID, RFX_ID, VD_CD, CRITERIA_ID, EVALUATOR_ID, SCORE
+          FROM RX_EVAL_SCORE WHERE RFX_ID=#{rfxId}
+    </select>
+    <delete id="deleteScores">DELETE FROM RX_EVAL_SCORE WHERE RFX_ID=#{rfxId}</delete>
+    <insert id="insertScore" parameterType="com.purchasesystem.domain.rx.eval.RxEvalScore">
+        INSERT INTO RX_EVAL_SCORE (RFX_ID, VD_CD, CRITERIA_ID, EVALUATOR_ID, SCORE, REG_ID)
+        VALUES (#{rfxId}, #{vdCd}, #{criteriaId}, #{evaluatorId}, NVL(#{score},0), 'SYSTEM')
+    </insert>
+
+    <select id="findVendorQuotes" resultType="com.purchasesystem.domain.rx.eval.RxEvalDtos$VendorQuote">
+        SELECT V.VD_CD AS "vdCd", V.VD_NM AS "vdNm", NVL(Q.AMT,0) AS "quoteAmt"
+          FROM RX_RFX_VENDOR V
+          LEFT JOIN (
+            SELECT VD_CD, SUM(OFFER_AMT) AS AMT FROM RX_QUOTE_ITEM WHERE RFX_ID=#{rfxId} GROUP BY VD_CD
+          ) Q ON Q.VD_CD = V.VD_CD
+         WHERE V.RFX_ID=#{rfxId}
+         ORDER BY V.VD_CD
+    </select>
+
+</mapper>

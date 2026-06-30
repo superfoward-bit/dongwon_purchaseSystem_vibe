@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.segment.mapper.SegmentMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.segment.VdSegment">
+        SELECT G.ID, G.COMP_CD, G.SEG_CD, G.SEG_NM, G.DESCRIPTION, G.DEFAULT_SHEET_CD,
+               S.SHEET_NM AS DEFAULT_SHEET_NM, G.SORT_NO, G.USE_YN, G.REG_ID,
+               (SELECT COUNT(*) FROM VD_VENDOR V WHERE V.SEG_CD=G.SEG_CD AND V.DEL_YN='N') AS VENDOR_CNT
+          FROM VD_SEGMENT G
+          LEFT JOIN VD_EVAL_SHEET S ON S.SHEET_CD=G.DEFAULT_SHEET_CD AND S.DEL_YN='N'
+         WHERE G.DEL_YN='N'
+         ORDER BY G.SORT_NO, G.SEG_CD
+    </select>
+
+    <select id="findByCd" resultType="com.purchasesystem.domain.segment.VdSegment">
+        SELECT ID, COMP_CD, SEG_CD, SEG_NM, DESCRIPTION, DEFAULT_SHEET_CD, SORT_NO, USE_YN, REG_ID
+          FROM VD_SEGMENT WHERE SEG_CD=#{segCd} AND DEL_YN='N'
+    </select>
+
+    <select id="countByCd" resultType="int">
+        SELECT COUNT(*) FROM VD_SEGMENT WHERE SEG_CD=#{segCd} AND DEL_YN='N'
+    </select>
+
+    <insert id="insert" parameterType="com.purchasesystem.domain.segment.VdSegment"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO VD_SEGMENT (COMP_CD, SEG_CD, SEG_NM, DESCRIPTION, DEFAULT_SHEET_CD, SORT_NO, USE_YN, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{segCd}, #{segNm}, #{description}, #{defaultSheetCd}, NVL(#{sortNo},1), NVL(#{useYn},'Y'), #{regId}, #{regId})
+    </insert>
+
+    <update id="update" parameterType="com.purchasesystem.domain.segment.VdSegment">
+        UPDATE VD_SEGMENT SET SEG_NM=#{segNm}, DESCRIPTION=#{description}, DEFAULT_SHEET_CD=#{defaultSheetCd},
+               SORT_NO=NVL(#{sortNo},1), USE_YN=#{useYn}, MOD_ID=#{regId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+
+    <update id="delete">UPDATE VD_SEGMENT SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+
+    <update id="assignVendor">
+        UPDATE VD_VENDOR SET SEG_CD=#{segCd}, SEG_NM=#{segNm}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{vendorId}
+    </update>
+
+</mapper>

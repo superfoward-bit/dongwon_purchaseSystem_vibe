@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.pr.mapper.PrMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.pr.PrRequest">
+        SELECT R.ID, R.COMP_CD, R.PR_NO, R.PR_TITLE, R.PR_TYP,
+               R.PURC_GRP_CD, R.REQ_DEPT_CD, R.REQ_USR_ID, R.OPER_ORG_CD,
+               TO_CHAR(R.REQ_YMD, 'YYYY-MM-DD') AS REQ_YMD,
+               TO_CHAR(R.HOPE_DLV_YMD, 'YYYY-MM-DD') AS HOPE_DLV_YMD,
+               R.CURR_CD, R.TOT_AMT, R.STS,
+               C.CD_NM_KO AS STS_NM,
+               R.REG_ID, TO_CHAR(R.REG_DT, 'YYYY-MM-DD HH24:MI') AS REG_DT
+          FROM PR_REQUEST R
+          LEFT JOIN CM_CODE C ON C.GRP_CD = 'PR_STS' AND C.CD = R.STS AND C.DEL_YN = 'N'
+         WHERE R.DEL_YN = 'N'
+        <if test="keyword != null and keyword != ''">
+           AND (R.PR_NO LIKE '%' || #{keyword} || '%' OR R.PR_TITLE LIKE '%' || #{keyword} || '%')
+        </if>
+        <if test="sts != null and sts != ''">
+           AND R.STS = #{sts}
+        </if>
+         ORDER BY R.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.pr.PrRequest">
+        SELECT R.ID, R.COMP_CD, R.PR_NO, R.PR_TITLE, R.PR_TYP,
+               R.PURC_GRP_CD, R.REQ_DEPT_CD, R.REQ_USR_ID, R.OPER_ORG_CD,
+               TO_CHAR(R.REQ_YMD, 'YYYY-MM-DD') AS REQ_YMD,
+               TO_CHAR(R.HOPE_DLV_YMD, 'YYYY-MM-DD') AS HOPE_DLV_YMD,
+               R.CURR_CD, R.BUDGET_CD, BG.BUDGET_NM, R.TOT_AMT, R.STS, C.CD_NM_KO AS STS_NM, R.REMARK,
+               R.REG_ID, TO_CHAR(R.REG_DT, 'YYYY-MM-DD HH24:MI') AS REG_DT
+          FROM PR_REQUEST R
+          LEFT JOIN CM_CODE C ON C.GRP_CD = 'PR_STS' AND C.CD = R.STS AND C.DEL_YN = 'N'
+          LEFT JOIN BG_BUDGET BG ON BG.COMP_CD = R.COMP_CD AND BG.BUDGET_CD = R.BUDGET_CD AND BG.DEL_YN = 'N'
+         WHERE R.ID = #{id} AND R.DEL_YN = 'N'
+    </select>
+
+    <select id="findItems" resultType="com.purchasesystem.domain.pr.PrItem">
+        SELECT ID, REQUEST_ID, LINE_NO, ITEM_CD, NEW_ITEM_YN, ITEM_NM, SPEC, UNIT_CD,
+               QTY, EST_PRC, AMT, TO_CHAR(HOPE_DLV_YMD, 'YYYY-MM-DD') AS HOPE_DLV_YMD,
+               DLV_PLACE, REMARK
+          FROM PR_ITEM
+         WHERE REQUEST_ID = #{requestId}
+         ORDER BY LINE_NO
+    </select>
+
+    <insert id="insertRequest" parameterType="com.purchasesystem.domain.pr.PrRequest"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO PR_REQUEST (COMP_CD, PR_NO, PR_TITLE, PR_TYP, PURC_GRP_CD, REQ_DEPT_CD,
+                                REQ_USR_ID, OPER_ORG_CD, REQ_YMD, HOPE_DLV_YMD, CURR_CD, BUDGET_CD, TOT_AMT,
+                                STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{prNo}, #{prTitle}, NVL(#{prTyp}, 'PRODUCT'), #{purcGrpCd}, #{reqDeptCd},
+                #{reqUsrId}, #{operOrgCd},
+                TO_DATE(#{reqYmd}, 'YYYY-MM-DD'), TO_DATE(#{hopeDlvYmd}, 'YYYY-MM-DD'),
+                NVL(#{currCd}, 'KRW'), #{budgetCd}, NVL(#{totAmt}, 0),
+                NVL(#{sts}, 'TMP'), #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <update id="updateRequest" parameterType="com.purchasesystem.domain.pr.PrRequest">
+        UPDATE PR_REQUEST
+           SET PR_TITLE = #{prTitle}, PR_TYP = #{prTyp}, PURC_GRP_CD = #{purcGrpCd},
+               REQ_DEPT_CD = #{reqDeptCd}, OPER_ORG_CD = #{operOrgCd},
+               REQ_YMD = TO_DATE(#{reqYmd}, 'YYYY-MM-DD'),
+               HOPE_DLV_YMD = TO_DATE(#{hopeDlvYmd}, 'YYYY-MM-DD'),
+               CURR_CD = #{currCd}, BUDGET_CD = #{budgetCd}, TOT_AMT = #{totAmt}, REMARK = #{remark},
+               MOD_ID = #{modId}, MOD_DT = SYSTIMESTAMP
+         WHERE ID = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE PR_REQUEST SET STS = #{sts}, MOD_ID = #{modId}, MOD_DT = SYSTIMESTAMP
+         WHERE ID = #{id}
+    </update>
+
+    <update id="deleteRequest">
+        UPDATE PR_REQUEST SET DEL_YN = 'Y', MOD_ID = #{modId}, MOD_DT = SYSTIMESTAMP
+         WHERE ID = #{id}
+    </update>
+
+    <insert id="insertItem" parameterType="com.purchasesystem.domain.pr.PrItem">
+        INSERT INTO PR_ITEM (REQUEST_ID, LINE_NO, ITEM_CD, NEW_ITEM_YN, ITEM_NM, SPEC, UNIT_CD,
+                             QTY, EST_PRC, AMT, HOPE_DLV_YMD, DLV_PLACE, REMARK, REG_ID, MOD_ID)
+        VALUES (#{requestId}, #{lineNo}, #{itemCd}, NVL(#{newItemYn}, 'N'), #{itemNm}, #{spec}, #{unitCd},
+                NVL(#{qty}, 0), NVL(#{estPrc}, 0), NVL(#{amt}, 0),
+                TO_DATE(#{hopeDlvYmd}, 'YYYY-MM-DD'), #{dlvPlace}, #{remark}, 'SYSTEM', 'SYSTEM')
+    </insert>
+
+    <delete id="deleteItems">
+        DELETE FROM PR_ITEM WHERE REQUEST_ID = #{requestId}
+    </delete>
+
+</mapper>

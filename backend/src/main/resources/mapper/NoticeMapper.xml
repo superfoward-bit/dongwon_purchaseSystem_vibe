@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.notice.mapper.NoticeMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.notice.CmNotice">
+        SELECT N.ID, N.NOTI_TYP, T.CD_NM_KO AS NOTI_TYP_NM, N.TO_ADDR, N.TO_USR_ID, N.TITLE, N.CONTENT,
+               N.REF_TYP, N.REF_ID, N.EVENT_CD, N.SEND_STS, S.CD_NM_KO AS SEND_STS_NM,
+               TO_CHAR(N.SENT_DT,'YYYY-MM-DD HH24:MI') AS SENT_DT, N.ERR_MSG, N.REG_ID,
+               TO_CHAR(N.REG_DT,'YYYY-MM-DD HH24:MI') AS REG_DT
+          FROM CM_NOTICE N
+          LEFT JOIN CM_CODE T ON T.GRP_CD='NOTI_TYP' AND T.CD=N.NOTI_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='NOTI_STS' AND S.CD=N.SEND_STS AND S.DEL_YN='N'
+         WHERE 1=1
+        <if test="notiTyp != null and notiTyp != ''">AND N.NOTI_TYP=#{notiTyp}</if>
+        <if test="sendSts != null and sendSts != ''">AND N.SEND_STS=#{sendSts}</if>
+        <if test="toUsrId != null and toUsrId != ''">AND N.TO_USR_ID=#{toUsrId}</if>
+        <if test="refTyp != null and refTyp != ''">AND N.REF_TYP=#{refTyp}</if>
+        <if test="refId != null">AND N.REF_ID=#{refId}</if>
+         ORDER BY N.ID DESC
+    </select>
+
+    <insert id="insert" parameterType="com.purchasesystem.domain.notice.CmNotice"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO CM_NOTICE (COMP_CD, NOTI_TYP, TO_ADDR, TO_USR_ID, TITLE, CONTENT, REF_TYP, REF_ID,
+               EVENT_CD, SEND_STS, REG_ID)
+        VALUES (#{compCd}, #{notiTyp}, #{toAddr}, #{toUsrId}, #{title}, #{content}, #{refTyp}, #{refId},
+               #{eventCd}, NVL(#{sendSts},'READY'), #{regId})
+    </insert>
+
+    <update id="updateResult">
+        UPDATE CM_NOTICE SET SEND_STS=#{sendSts}, ERR_MSG=#{errMsg},
+               SENT_DT = CASE WHEN #{sendSts}='SENT' THEN SYSTIMESTAMP ELSE SENT_DT END
+         WHERE ID=#{id}
+    </update>
+
+</mapper>

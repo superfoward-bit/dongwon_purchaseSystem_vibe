@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.slip.mapper.SlipMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.slip.AcSlip">
+        SELECT S.ID, S.SLIP_NO, S.SLIP_TYP, T.CD_NM_KO AS SLIP_TYP_NM, S.SRC_NO, S.VD_NM,
+               TO_CHAR(S.POSTING_YMD,'YYYY-MM-DD') AS POSTING_YMD, S.DR_ACCT, S.CR_ACCT, S.AMT,
+               S.SLIP_STS, ST.CD_NM_KO AS SLIP_STS_NM, S.REG_ID
+          FROM AC_SLIP S
+          LEFT JOIN CM_CODE T ON T.GRP_CD='SLIP_TYP' AND T.CD=S.SLIP_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE ST ON ST.GRP_CD='SLIP_STS' AND ST.CD=S.SLIP_STS AND ST.DEL_YN='N'
+         WHERE S.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">AND (S.SLIP_NO LIKE '%'||#{keyword}||'%' OR S.VD_NM LIKE '%'||#{keyword}||'%' OR S.SRC_NO LIKE '%'||#{keyword}||'%')</if>
+        <if test="slipSts != null and slipSts != ''">AND S.SLIP_STS=#{slipSts}</if>
+         ORDER BY S.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.slip.AcSlip">
+        SELECT S.ID, S.COMP_CD, S.SLIP_NO, S.SLIP_TYP, T.CD_NM_KO AS SLIP_TYP_NM, S.SRC_TYP, S.SRC_ID, S.SRC_NO,
+               S.VD_CD, S.VD_NM, TO_CHAR(S.POSTING_YMD,'YYYY-MM-DD') AS POSTING_YMD, S.DR_ACCT, S.CR_ACCT, S.AMT,
+               S.SLIP_STS, ST.CD_NM_KO AS SLIP_STS_NM, S.FISCAL_YM, S.ERP_DOC_NO, S.REMARK, S.REG_ID
+          FROM AC_SLIP S
+          LEFT JOIN CM_CODE T ON T.GRP_CD='SLIP_TYP' AND T.CD=S.SLIP_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE ST ON ST.GRP_CD='SLIP_STS' AND ST.CD=S.SLIP_STS AND ST.DEL_YN='N'
+         WHERE S.ID=#{id} AND S.DEL_YN='N'
+    </select>
+
+    <insert id="insert" parameterType="com.purchasesystem.domain.slip.AcSlip"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO AC_SLIP (COMP_CD, SLIP_NO, SLIP_TYP, SRC_TYP, SRC_ID, SRC_NO, VD_CD, VD_NM,
+               POSTING_YMD, DR_ACCT, CR_ACCT, AMT, SLIP_STS, FISCAL_YM, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{slipNo}, NVL(#{slipTyp},'PURCHASE'), #{srcTyp}, #{srcId}, #{srcNo}, #{vdCd}, #{vdNm},
+               TO_DATE(#{postingYmd},'YYYY-MM-DD'), #{drAcct}, #{crAcct}, NVL(#{amt},0), 'DRAFT', #{fiscalYm}, #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <update id="updateStatus">UPDATE AC_SLIP SET SLIP_STS=#{slipSts}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <update id="updateSent">UPDATE AC_SLIP SET SLIP_STS='SENT', ERP_DOC_NO=#{erpDocNo}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <update id="delete">UPDATE AC_SLIP SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+
+    <select id="findLines" resultType="com.purchasesystem.domain.slip.AcSlipLine">
+        SELECT ID, SLIP_ID, LINE_NO, DR_CR, ACCT_CD, ACCT_NM, AMT, REMARK FROM AC_SLIP_LINE
+         WHERE SLIP_ID=#{slipId} ORDER BY LINE_NO
+    </select>
+    <insert id="insertLine" parameterType="com.purchasesystem.domain.slip.AcSlipLine">
+        INSERT INTO AC_SLIP_LINE (SLIP_ID, LINE_NO, DR_CR, ACCT_CD, ACCT_NM, AMT, REMARK, REG_ID)
+        VALUES (#{slipId}, #{lineNo}, #{drCr}, #{acctCd}, #{acctNm}, NVL(#{amt},0), #{remark}, #{regId})
+    </insert>
+    <select id="countBySrc" resultType="int">SELECT COUNT(*) FROM AC_SLIP WHERE SRC_TYP=#{srcTyp} AND SRC_ID=#{srcId} AND DEL_YN='N' AND SLIP_STS&lt;&gt;'CANCEL'</select>
+
+</mapper>

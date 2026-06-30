@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.stock.mapper.IssueMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.stock.StIssue">
+        SELECT I.ID, I.ISSUE_NO, I.ISSUE_TYP, T.CD_NM_KO AS ISSUE_TYP_NM, I.WH_CD, W.CD_NM_KO AS WH_NM,
+               I.REQ_DEPT, TO_CHAR(I.ISSUE_YMD,'YYYY-MM-DD') AS ISSUE_YMD, I.STS, S.CD_NM_KO AS STS_NM, I.REG_ID
+          FROM ST_ISSUE I
+          LEFT JOIN CM_CODE T ON T.GRP_CD='ISSUE_TYP' AND T.CD=I.ISSUE_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE W ON W.GRP_CD='WH' AND W.CD=I.WH_CD AND W.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='INV_STS' AND S.CD=I.STS AND S.DEL_YN='N'
+         WHERE I.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">AND (I.ISSUE_NO LIKE '%'||#{keyword}||'%' OR I.REQ_DEPT LIKE '%'||#{keyword}||'%')</if>
+        <if test="sts != null and sts != ''">AND I.STS=#{sts}</if>
+         ORDER BY I.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.stock.StIssue">
+        SELECT I.ID, I.COMP_CD, I.ISSUE_NO, I.ISSUE_TYP, T.CD_NM_KO AS ISSUE_TYP_NM, I.WH_CD, W.CD_NM_KO AS WH_NM,
+               I.REQ_DEPT, TO_CHAR(I.ISSUE_YMD,'YYYY-MM-DD') AS ISSUE_YMD, I.STS, S.CD_NM_KO AS STS_NM, I.REMARK, I.REG_ID
+          FROM ST_ISSUE I
+          LEFT JOIN CM_CODE T ON T.GRP_CD='ISSUE_TYP' AND T.CD=I.ISSUE_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE W ON W.GRP_CD='WH' AND W.CD=I.WH_CD AND W.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='INV_STS' AND S.CD=I.STS AND S.DEL_YN='N'
+         WHERE I.ID=#{id} AND I.DEL_YN='N'
+    </select>
+
+    <select id="findItems" resultType="com.purchasesystem.domain.stock.StIssueItem">
+        SELECT ID, ISSUE_ID, LINE_NO, ITEM_CD, ITEM_NM, LOT_NO, UNIT_CD, QTY, REMARK
+          FROM ST_ISSUE_ITEM WHERE ISSUE_ID=#{issueId} ORDER BY LINE_NO
+    </select>
+
+    <insert id="insert" parameterType="com.purchasesystem.domain.stock.StIssue"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO ST_ISSUE (COMP_CD, ISSUE_NO, ISSUE_TYP, WH_CD, REQ_DEPT, ISSUE_YMD, STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{issueNo}, NVL(#{issueTyp},'PROD'), #{whCd}, #{reqDept}, TO_DATE(#{issueYmd},'YYYY-MM-DD'),
+                'TMP', #{remark}, #{regId}, #{regId})
+    </insert>
+    <update id="updateHeader" parameterType="com.purchasesystem.domain.stock.StIssue">
+        UPDATE ST_ISSUE SET ISSUE_TYP=#{issueTyp}, WH_CD=#{whCd}, REQ_DEPT=#{reqDept},
+               ISSUE_YMD=TO_DATE(#{issueYmd},'YYYY-MM-DD'), REMARK=#{remark}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP
+         WHERE ID=#{id}
+    </update>
+    <update id="updateStatus">UPDATE ST_ISSUE SET STS=#{sts}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <delete id="deleteItems">DELETE FROM ST_ISSUE_ITEM WHERE ISSUE_ID=#{issueId}</delete>
+    <insert id="insertItem" parameterType="com.purchasesystem.domain.stock.StIssueItem">
+        INSERT INTO ST_ISSUE_ITEM (ISSUE_ID, LINE_NO, ITEM_CD, ITEM_NM, LOT_NO, UNIT_CD, QTY, REMARK, REG_ID)
+        VALUES (#{issueId}, #{lineNo}, #{itemCd}, #{itemNm}, #{lotNo}, #{unitCd}, NVL(#{qty},0), #{remark}, 'SYSTEM')
+    </insert>
+
+</mapper>

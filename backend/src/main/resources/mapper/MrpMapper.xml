@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.mrp.mapper.MrpMapper">
+
+    <select id="findReorderItems" resultType="com.purchasesystem.domain.mrp.MrSuggest">
+        SELECT I.ITEM_CD, I.ITEM_NM, I.UNIT_CD, I.SAFETY_STOCK, I.REORDER_POINT, I.ORDER_QTY, I.MOQ,
+               I.REP_VD_CD, I.REP_VD_NM,
+               NVL((SELECT SUM(S.QTY) FROM ST_STOCK S WHERE S.COMP_CD=I.COMP_CD AND S.ITEM_CD=I.ITEM_CD),0) AS CUR_QTY,
+               NVL((SELECT SUM(PI.QTY - PI.GR_QTY) FROM PO_ORDER_ITEM PI
+                      JOIN PO_ORDER PO ON PO.ID = PI.ORDER_ID
+                     WHERE PI.ITEM_CD = I.ITEM_CD AND PO.DEL_YN='N' AND PO.STS='PC' AND PI.QTY > PI.GR_QTY),0) AS ON_ORDER_QTY
+          FROM IT_ITEM I
+         WHERE I.DEL_YN='N' AND I.ITEM_STS='ACTIVE' AND NVL(I.REORDER_POINT,0) > 0
+         ORDER BY I.ITEM_CD
+    </select>
+
+    <update id="clearSuggests">UPDATE MR_SUGGEST SET DEL_YN='Y' WHERE COMP_CD=#{compCd} AND STS='SUGGEST' AND DEL_YN='N'</update>
+
+    <insert id="insertSuggest" parameterType="com.purchasesystem.domain.mrp.MrSuggest"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO MR_SUGGEST (COMP_CD, RUN_YMD, ITEM_CD, ITEM_NM, UNIT_CD, CUR_QTY, ON_ORDER_QTY, AVAIL_QTY,
+               SAFETY_STOCK, REORDER_POINT, SHORTAGE_QTY, SUGGEST_QTY, REP_VD_CD, REP_VD_NM, STS, REG_ID, MOD_ID)
+        VALUES (#{compCd}, TO_DATE(#{runYmd},'YYYY-MM-DD'), #{itemCd}, #{itemNm}, #{unitCd},
+               NVL(#{curQty},0), NVL(#{onOrderQty},0), NVL(#{availQty},0), NVL(#{safetyStock},0), NVL(#{reorderPoint},0),
+               NVL(#{shortageQty},0), NVL(#{suggestQty},0), #{repVdCd}, #{repVdNm}, 'SUGGEST', #{regId}, #{regId})
+    </insert>
+
+    <select id="findSuggests" resultType="com.purchasesystem.domain.mrp.MrSuggest">
+        SELECT M.ID, TO_CHAR(M.RUN_YMD,'YYYY-MM-DD') AS RUN_YMD, M.ITEM_CD, M.ITEM_NM, M.UNIT_CD,
+               M.CUR_QTY, M.ON_ORDER_QTY, M.AVAIL_QTY, M.SAFETY_STOCK, M.REORDER_POINT, M.SHORTAGE_QTY, M.SUGGEST_QTY,
+               M.REP_VD_CD, M.REP_VD_NM, M.STS, C.CD_NM_KO AS STS_NM, M.SRC_PR_NO
+          FROM MR_SUGGEST M
+          LEFT JOIN CM_CODE C ON C.GRP_CD='MR_STS' AND C.CD=M.STS AND C.DEL_YN='N'
+         WHERE M.DEL_YN='N'
+        <if test="sts != null and sts != ''">AND M.STS=#{sts}</if>
+         ORDER BY M.STS, M.ITEM_CD
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.mrp.MrSuggest">
+        SELECT ID, COMP_CD, ITEM_CD, ITEM_NM, UNIT_CD, SUGGEST_QTY, REP_VD_CD, REP_VD_NM, STS FROM MR_SUGGEST WHERE ID=#{id} AND DEL_YN='N'
+    </select>
+
+    <update id="updateOrdered">UPDATE MR_SUGGEST SET STS='ORDERED', SRC_PR_NO=#{prNo}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <update id="updateStatus">UPDATE MR_SUGGEST SET STS=#{sts}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+
+</mapper>

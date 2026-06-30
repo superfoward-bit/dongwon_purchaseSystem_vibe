@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.risk.mapper.RiskMapper">
+
+    <!-- ===== 협력사 감시 ===== -->
+    <select id="findAuditList" resultType="com.purchasesystem.domain.risk.VdAudit">
+        SELECT A.ID, A.AUDIT_NO, A.VD_CD, A.VD_NM, A.AUDIT_TYP, T.CD_NM_KO AS AUDIT_TYP_NM,
+               TO_CHAR(A.AUDIT_YMD,'YYYY-MM-DD') AS AUDIT_YMD, A.RESULT_GRADE, G.CD_NM_KO AS RESULT_GRADE_NM,
+               A.FINDING_CNT, A.ACTION_REQ_YN, A.STS, C.CD_NM_KO AS STS_NM, A.REG_ID
+          FROM VD_AUDIT A
+          LEFT JOIN CM_CODE C ON C.GRP_CD='AUDIT_STS' AND C.CD=A.STS AND C.DEL_YN='N'
+          LEFT JOIN CM_CODE T ON T.GRP_CD='AUDIT_TYP' AND T.CD=A.AUDIT_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE G ON G.GRP_CD='AUDIT_GRADE' AND G.CD=A.RESULT_GRADE AND G.DEL_YN='N'
+         WHERE A.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">
+           AND (A.AUDIT_NO LIKE '%'||#{keyword}||'%' OR A.VD_NM LIKE '%'||#{keyword}||'%')
+        </if>
+        <if test="sts != null and sts != ''">AND A.STS=#{sts}</if>
+         ORDER BY A.ID DESC
+    </select>
+
+    <select id="findAuditById" resultType="com.purchasesystem.domain.risk.VdAudit">
+        SELECT A.ID, A.COMP_CD, A.AUDIT_NO, A.VD_CD, A.VD_NM, A.AUDIT_TYP, T.CD_NM_KO AS AUDIT_TYP_NM,
+               TO_CHAR(A.AUDIT_YMD,'YYYY-MM-DD') AS AUDIT_YMD, A.AUDITOR_ID,
+               A.RESULT_GRADE, G.CD_NM_KO AS RESULT_GRADE_NM, A.FINDING_CNT, A.ACTION_REQ_YN,
+               A.STS, C.CD_NM_KO AS STS_NM, A.REMARK, A.REG_ID
+          FROM VD_AUDIT A
+          LEFT JOIN CM_CODE C ON C.GRP_CD='AUDIT_STS' AND C.CD=A.STS AND C.DEL_YN='N'
+          LEFT JOIN CM_CODE T ON T.GRP_CD='AUDIT_TYP' AND T.CD=A.AUDIT_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE G ON G.GRP_CD='AUDIT_GRADE' AND G.CD=A.RESULT_GRADE AND G.DEL_YN='N'
+         WHERE A.ID=#{id} AND A.DEL_YN='N'
+    </select>
+
+    <select id="findAuditResults" resultType="com.purchasesystem.domain.risk.VdAuditResult">
+        SELECT ID, AUDIT_ID, ITEM_SEQ, AUDIT_ITEM_NM, RESULT, FINDING, ACTION_REQ
+          FROM VD_AUDIT_RESULT WHERE AUDIT_ID=#{auditId} ORDER BY ITEM_SEQ
+    </select>
+
+    <insert id="insertAudit" parameterType="com.purchasesystem.domain.risk.VdAudit"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO VD_AUDIT (COMP_CD, AUDIT_NO, VD_CD, VD_NM, AUDIT_TYP, AUDIT_YMD, AUDITOR_ID, STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{auditNo}, #{vdCd}, #{vdNm}, NVL(#{auditTyp},'REGULAR'),
+                TO_DATE(#{auditYmd},'YYYY-MM-DD'), #{auditorId}, 'ING', #{remark}, #{regId}, #{regId})
+    </insert>
+    <update id="updateAuditSummary">
+        UPDATE VD_AUDIT SET RESULT_GRADE=#{resultGrade}, FINDING_CNT=#{findingCnt}, ACTION_REQ_YN=#{actionReqYn}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="updateAuditStatus">UPDATE VD_AUDIT SET STS=#{sts}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <update id="updateVendorRisk">UPDATE VD_VENDOR SET RISK_GRADE=#{riskGrade}, MOD_DT=SYSTIMESTAMP WHERE VD_CD=#{vdCd} AND DEL_YN='N'</update>
+    <update id="deleteAudit">UPDATE VD_AUDIT SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <insert id="insertAuditResult" parameterType="com.purchasesystem.domain.risk.VdAuditResult">
+        INSERT INTO VD_AUDIT_RESULT (AUDIT_ID, ITEM_SEQ, AUDIT_ITEM_NM, RESULT, FINDING, ACTION_REQ, REG_ID)
+        VALUES (#{auditId}, #{itemSeq}, #{auditItemNm}, NVL(#{result},'SAFE'), #{finding}, #{actionReq}, 'SYSTEM')
+    </insert>
+    <delete id="deleteAuditResults">DELETE FROM VD_AUDIT_RESULT WHERE AUDIT_ID=#{auditId}</delete>
+
+    <!-- ===== 규제 ===== -->
+    <select id="findRegalList" resultType="com.purchasesystem.domain.risk.VdRegal">
+        SELECT R.ID, R.REGAL_NO, R.REGAL_NM, R.REGAL_TYP, T.CD_NM_KO AS REGAL_TYP_NM,
+               TO_CHAR(R.PLAN_YMD,'YYYY-MM-DD') AS PLAN_YMD, TO_CHAR(R.NOTIFY_YMD,'YYYY-MM-DD') AS NOTIFY_YMD,
+               TO_CHAR(R.ENFORCE_YMD,'YYYY-MM-DD') AS ENFORCE_YMD,
+               TRUNC(R.ENFORCE_YMD) - TRUNC(SYSDATE) AS DAYS_TO_ENFORCE,
+               R.ALARM_YN, R.ALARM_BEFORE_DAY, R.STS, S.CD_NM_KO AS STS_NM
+          FROM VD_REGAL R
+          LEFT JOIN CM_CODE T ON T.GRP_CD='REGAL_TYP' AND T.CD=R.REGAL_TYP AND T.DEL_YN='N'
+          LEFT JOIN CM_CODE S ON S.GRP_CD='REGAL_STS' AND S.CD=R.STS AND S.DEL_YN='N'
+         WHERE R.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">AND R.REGAL_NM LIKE '%'||#{keyword}||'%'</if>
+        <if test="sts != null and sts != ''">AND R.STS=#{sts}</if>
+         ORDER BY R.ENFORCE_YMD NULLS LAST, R.ID DESC
+    </select>
+    <select id="findRegalById" resultType="com.purchasesystem.domain.risk.VdRegal">
+        SELECT ID, REGAL_NO, REGAL_NM, REGAL_TYP, TO_CHAR(PLAN_YMD,'YYYY-MM-DD') AS PLAN_YMD,
+               TO_CHAR(NOTIFY_YMD,'YYYY-MM-DD') AS NOTIFY_YMD, TO_CHAR(ENFORCE_YMD,'YYYY-MM-DD') AS ENFORCE_YMD,
+               TARGET_DESC, ALARM_YN, ALARM_BEFORE_DAY, STS, REMARK, USE_YN
+          FROM VD_REGAL WHERE ID=#{id} AND DEL_YN='N'
+    </select>
+    <select id="countRegal" resultType="int">SELECT COUNT(*) FROM VD_REGAL WHERE REGAL_NO=#{regalNo} AND DEL_YN='N'</select>
+    <insert id="insertRegal" parameterType="com.purchasesystem.domain.risk.VdRegal"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO VD_REGAL (REGAL_NO, REGAL_NM, REGAL_TYP, PLAN_YMD, NOTIFY_YMD, ENFORCE_YMD,
+                              TARGET_DESC, ALARM_YN, ALARM_BEFORE_DAY, STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{regalNo}, #{regalNm}, NVL(#{regalTyp},'LAW'),
+                TO_DATE(#{planYmd},'YYYY-MM-DD'), TO_DATE(#{notifyYmd},'YYYY-MM-DD'), TO_DATE(#{enforceYmd},'YYYY-MM-DD'),
+                #{targetDesc}, NVL(#{alarmYn},'N'), NVL(#{alarmBeforeDay},30), NVL(#{sts},'ACTIVE'), #{remark}, #{regId}, #{regId})
+    </insert>
+    <update id="updateRegal" parameterType="com.purchasesystem.domain.risk.VdRegal">
+        UPDATE VD_REGAL SET REGAL_NM=#{regalNm}, REGAL_TYP=#{regalTyp},
+               PLAN_YMD=TO_DATE(#{planYmd},'YYYY-MM-DD'), NOTIFY_YMD=TO_DATE(#{notifyYmd},'YYYY-MM-DD'),
+               ENFORCE_YMD=TO_DATE(#{enforceYmd},'YYYY-MM-DD'), TARGET_DESC=#{targetDesc},
+               ALARM_YN=#{alarmYn}, ALARM_BEFORE_DAY=#{alarmBeforeDay}, STS=#{sts}, REMARK=#{remark},
+               MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="deleteRegal">UPDATE VD_REGAL SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+
+</mapper>

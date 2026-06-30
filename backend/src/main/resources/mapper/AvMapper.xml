@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.purchasesystem.domain.av.mapper.AvMapper">
+
+    <select id="findList" resultType="com.purchasesystem.domain.av.AvAdvance">
+        SELECT A.ID, A.ADV_NO, A.VD_CD, A.VD_NM, A.ADV_AMT, TO_CHAR(A.PAY_YMD,'YYYY-MM-DD') AS PAY_YMD,
+               A.PURPOSE, A.BALANCE, (A.ADV_AMT - NVL(A.BALANCE,0)) AS REPAID_AMT,
+               A.STS, S.CD_NM_KO AS STS_NM, A.REG_ID
+          FROM AV_ADVANCE A
+          LEFT JOIN CM_CODE S ON S.GRP_CD='AV_STS' AND S.CD=A.STS AND S.DEL_YN='N'
+         WHERE A.DEL_YN='N'
+        <if test="keyword != null and keyword != ''">
+           AND (A.ADV_NO LIKE '%'||#{keyword}||'%' OR A.VD_NM LIKE '%'||#{keyword}||'%')
+        </if>
+        <if test="sts != null and sts != ''">AND A.STS=#{sts}</if>
+        <if test="vdCd != null and vdCd != ''">AND A.VD_CD=#{vdCd}</if>
+         ORDER BY A.ID DESC
+    </select>
+
+    <select id="findById" resultType="com.purchasesystem.domain.av.AvAdvance">
+        SELECT A.ID, A.COMP_CD, A.ADV_NO, A.VD_CD, A.VD_NM, A.ADV_AMT, TO_CHAR(A.PAY_YMD,'YYYY-MM-DD') AS PAY_YMD,
+               A.PURPOSE, A.BALANCE, (A.ADV_AMT - NVL(A.BALANCE,0)) AS REPAID_AMT,
+               A.STS, S.CD_NM_KO AS STS_NM, A.REMARK, A.REG_ID
+          FROM AV_ADVANCE A
+          LEFT JOIN CM_CODE S ON S.GRP_CD='AV_STS' AND S.CD=A.STS AND S.DEL_YN='N'
+         WHERE A.ID=#{id} AND A.DEL_YN='N'
+    </select>
+
+    <insert id="insert" parameterType="com.purchasesystem.domain.av.AvAdvance"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="ID">
+        INSERT INTO AV_ADVANCE (COMP_CD, ADV_NO, VD_CD, VD_NM, ADV_AMT, PAY_YMD, PURPOSE, BALANCE, STS, REMARK, REG_ID, MOD_ID)
+        VALUES (#{compCd}, #{advNo}, #{vdCd}, #{vdNm}, NVL(#{advAmt},0), TO_DATE(#{payYmd},'YYYY-MM-DD'), #{purpose},
+                NVL(#{advAmt},0), NVL(#{sts},'TMP'), #{remark}, #{regId}, #{regId})
+    </insert>
+
+    <update id="update" parameterType="com.purchasesystem.domain.av.AvAdvance">
+        UPDATE AV_ADVANCE SET VD_CD=#{vdCd}, VD_NM=#{vdNm}, ADV_AMT=NVL(#{advAmt},0), BALANCE=NVL(#{advAmt},0),
+               PAY_YMD=TO_DATE(#{payYmd},'YYYY-MM-DD'), PURPOSE=#{purpose}, REMARK=#{remark},
+               MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}
+    </update>
+    <update id="updateStatus">UPDATE AV_ADVANCE SET STS=#{sts}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <update id="updateBalance">UPDATE AV_ADVANCE SET BALANCE=#{balance}, STS=#{sts}, MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+    <update id="delete">UPDATE AV_ADVANCE SET DEL_YN='Y', MOD_ID=#{modId}, MOD_DT=SYSTIMESTAMP WHERE ID=#{id}</update>
+
+    <select id="findRepays" resultType="com.purchasesystem.domain.av.AvRepay">
+        SELECT ID, ADVANCE_ID, LINE_NO, REPAY_AMT, TO_CHAR(REPAY_YMD,'YYYY-MM-DD') AS REPAY_YMD, CLOSE_NO, REMARK
+          FROM AV_REPAY WHERE ADVANCE_ID=#{advanceId} ORDER BY LINE_NO
+    </select>
+    <insert id="insertRepay" parameterType="com.purchasesystem.domain.av.AvRepay">
+        INSERT INTO AV_REPAY (ADVANCE_ID, LINE_NO, REPAY_AMT, REPAY_YMD, CLOSE_NO, REMARK, REG_ID)
+        VALUES (#{advanceId}, #{lineNo}, NVL(#{repayAmt},0), TO_DATE(#{repayYmd},'YYYY-MM-DD'), #{closeNo}, #{remark}, 'SYSTEM')
+    </insert>
+    <delete id="deleteRepays">DELETE FROM AV_REPAY WHERE ADVANCE_ID=#{advanceId}</delete>
+    <select id="sumRepay" resultType="java.math.BigDecimal">
+        SELECT NVL(SUM(REPAY_AMT),0) FROM AV_REPAY WHERE ADVANCE_ID=#{advanceId}
+    </select>
+    <select id="nextRepayLine" resultType="int">
+        SELECT NVL(MAX(LINE_NO),0)+1 FROM AV_REPAY WHERE ADVANCE_ID=#{advanceId}
+    </select>
+
+</mapper>

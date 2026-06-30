@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: purchase-backend
+  profiles:
+    active: local
+  datasource:
+    driver-class-name: oracle.jdbc.OracleDriver
+    url: jdbc:oracle:thin:@localhost:1522/FREEPDB1
+    username: PURCHASE
+    password: purchase
+    hikari:
+      connection-timeout: 10000
+      maximum-pool-size: 10
+  quartz:
+    job-store-type: memory
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+
+# 첨부파일 저장 경로
+app:
+  upload-dir: C:/purchasesystem/uploads
+
+server:
+  port: 8090
+  servlet:
+    context-path: /
+
+mybatis:
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    default-fetch-size: 100
+    default-statement-timeout: 30
+    jdbc-type-for-null: 'NULL'   # Oracle: null 파라미터 JdbcType OTHER 오류 방지
+
+logging:
+  level:
+    com.purchasesystem: debug
+    org.mybatis: debug
+
+# JWT 설정
+jwt:
+  secret: change-this-secret-key-to-a-long-random-string-at-least-32bytes-please
+  access-token-validity-ms: 3600000      # 1시간
+  refresh-token-validity-ms: 1209600000  # 14일
