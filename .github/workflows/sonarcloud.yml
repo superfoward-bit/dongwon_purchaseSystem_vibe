@@ -1,0 +1,40 @@
+name: SonarCloud
+
+# main에 push하거나 PR을 올릴 때마다 자동 실행
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  sonarcloud:
+    name: SonarCloud 분석
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) 소스 체크아웃 (전체 히스토리 = 이슈 blame 정확도)
+      - name: 소스 체크아웃
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2) 백엔드가 요구하는 JDK 21 설치
+      - name: JDK 21 설치
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # 3) 백엔드 컴파일 → .class 생성 (Java 완전 분석의 핵심 단계)
+      #    테스트는 돌리지 않고 main 소스만 컴파일한다.
+      - name: 백엔드 컴파일
+        working-directory: backend
+        run: ./gradlew classes --no-daemon
+
+      # 4) SonarCloud 스캔 (루트의 sonar-project.properties 설정을 읽음)
+      - name: SonarCloud 스캔
+        uses: SonarSource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
