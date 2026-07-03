@@ -30,7 +30,9 @@ jobs:
       #    테스트는 돌리지 않고 main 소스만 컴파일한다.
       - name: 백엔드 컴파일
         working-directory: backend
-        run: ./gradlew classes --no-daemon
+        run: |
+          chmod +x gradlew
+          ./gradlew classes --no-daemon
 
       # 4) SonarCloud 스캔 (루트의 sonar-project.properties 설정을 읽음)
       - name: SonarCloud 스캔
